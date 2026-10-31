@@ -1,10 +1,6 @@
 package com.nexoshift.petcarehub.shared.interfaces.rest.exceptions;
 
-import com.nexoshift.petcarehub.shared.domain.exceptions.BadRequestException;
-import com.nexoshift.petcarehub.shared.domain.exceptions.ConflictException;
-import com.nexoshift.petcarehub.shared.domain.exceptions.ForbiddenException;
-import com.nexoshift.petcarehub.shared.domain.exceptions.NotFoundException;
-import com.nexoshift.petcarehub.shared.domain.exceptions.UnauthorizedException;
+import com.nexoshift.petcarehub.shared.domain.exceptions.*;
 import com.nexoshift.petcarehub.shared.interfaces.rest.resources.ErrorResource;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -73,6 +69,18 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResource> handleConflict(
       RuntimeException exception, HttpServletRequest request) {
     return build(HttpStatus.CONFLICT, exception.getMessage(), request, List.of());
+  }
+
+  @ExceptionHandler(UnprocessableEntityException.class)
+  public ResponseEntity<ErrorResource> handleUnprocessable(
+          UnprocessableEntityException exception, HttpServletRequest request) {
+    return build(HttpStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request, List.of());
+  }
+
+  @ExceptionHandler(ServiceUnavailableException.class)
+  public ResponseEntity<ErrorResource> handleServiceUnavailable(
+          ServiceUnavailableException exception, HttpServletRequest request) {
+    return build(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage(), request, List.of());
   }
 
   @ExceptionHandler(Exception.class)
