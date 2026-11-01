@@ -117,7 +117,7 @@ public class Clinic extends AuditableAbstractAggregateRoot<Clinic> {
     /**
      * Adds a consulting room to the clinic.
      */
-    public void addConsultingRoom(String name, String description){
+    public ConsultingRoom addConsultingRoom(String name, String description){
 
         validateConsultingRoomName(name);
 
@@ -128,7 +128,11 @@ public class Clinic extends AuditableAbstractAggregateRoot<Clinic> {
             throw new IllegalArgumentException("A consulting room with this name already exists");
         }
 
-        consultingRooms.add(new ConsultingRoom(this, name, description));
+        var consultingRoom = new ConsultingRoom(this, name, description);
+
+        this.consultingRooms.add(consultingRoom);
+
+        return consultingRoom;
     }
 
     public void updateConsultingRoom(Long consultingRoomId, String name, String description){
