@@ -110,16 +110,18 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
      */
     @Override
     @Transactional
-    public void handle(CreateConsultingRoomCommand command) {
+    public Long handle(CreateConsultingRoomCommand command) {
 
-        var clinic = findClinic(command.clinicId());
+        var clinic = clinicRepository.findById(command.clinicId())
+                .orElseThrow(() -> new ClinicNotFoundException(command.clinicId()));
 
-        clinic.addConsultingRoom(
+        var consultingRoom = clinic.addConsultingRoom(
                 command.name(),
                 command.description()
         );
 
-        clinicRepository.save(clinic);
+        clinicRepository.flush();
+        return consultingRoom.getId();
     }
 
     /**
@@ -200,17 +202,20 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
     @Transactional
     public void handle(AssignVeterinarianCommand command) {
 
-        var clinic = findClinic(command.clinicId());
+        var clinic = clinicRepository.findById(command.clinicId())
+                .orElseThrow(() ->
+                        new ClinicNotFoundException(command.clinicId())
+                );
 
         var veterinarian = veterinarianRepository.findById(
                 command.veterinarianId()
         ).orElseThrow(() ->
                 new VeterinarianNotFoundException(command.veterinarianId()));
 
-        if (!veterinarian.getClinicId().equals(
-                new ClinicId(clinic.getId()))) {
+        if (!veterinarian.getClinicId().clinicId().equals(command.clinicId())) {
             throw new ProfileOperationNotAllowedException(
-                    "Veterinarian does not belong to this clinic");
+                    "Veterinarian does not belong to this clinic"
+            );
         }
 
         clinic.assignVeterinarian(
@@ -218,7 +223,7 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
                 new VeterinarianId(command.veterinarianId())
         );
 
-        clinicRepository.save(clinic);
+        clinicRepository.flush();
     }
 
     /**

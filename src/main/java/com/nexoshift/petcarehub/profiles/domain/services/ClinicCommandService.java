@@ -40,7 +40,7 @@ public interface ClinicCommandService {
      *
      * @param command the create consulting room command
      */
-    void handle(CreateConsultingRoomCommand command);
+    Long handle(CreateConsultingRoomCommand command);
 
     /**
      * Updates a consulting room.
