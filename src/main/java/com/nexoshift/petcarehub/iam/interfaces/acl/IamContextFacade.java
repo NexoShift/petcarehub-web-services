@@ -19,4 +19,16 @@ public interface IamContextFacade {
 
   /** Returns PET_OWNER or CLINIC, or an empty string if the account does not exist. */
   String fetchAccountTypeByAccountId(Long accountId);
+
+  /** Returns true if the account exists and is active. */
+  boolean existsActiveAccount(Long accountId);
+
+  /** Returns true if the user is active and has the specified role. */
+  boolean userHasRole(Long userId, String roleName);
+
+  /** Returns true if the user is active and is the holder of the specified account. */
+  boolean isAccountHolder(Long userId, Long accountId);
+
+  /** Returns the authenticated user id, or 0 if no user is authenticated. */
+  Long fetchAuthenticatedUserId();
 }
