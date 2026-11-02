@@ -55,32 +55,9 @@ public class VeterinarianQueryServiceImpl implements VeterinarianQueryService {
      */
     @Override
     public Optional<Veterinarian> handle(GetVeterinarianByIdQuery query) {
-        var veterinarian = veterinarianRepository.findById(query.veterinarianId());
 
-        if (veterinarian.isEmpty()) return Optional.empty();
-
-        var clinicId = veterinarian.get().getClinicId().clinicId();
-
-        var clinic = clinicRepository.findById(clinicId)
-                .orElseThrow(() -> new ClinicNotFoundException(clinicId));
-
-        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
-        var authenticatedAccountId = iamExternalService.fetchAccountIdByUserId(
-                authenticatedUserId);
-
-        var clinicAccountId = clinic.getAccountId().accountId();
-
-        var hasValidRole = iamExternalService.userHasRole(
-                authenticatedUserId, "ROLE_VETERINARIAN")
-                || iamExternalService.userHasRole(
-                authenticatedUserId, "ROLE_CLINIC_ADMIN");
-
-        if (!hasValidRole || !clinicAccountId.equals(authenticatedAccountId)) {
-            throw new ProfileOperationNotAllowedException(
-                    "You cannot access this veterinarian's profile");
-        }
-
-        return veterinarian;
+        validateAuthenticatedUser();
+        return veterinarianRepository.findById(query.veterinarianId());
     }
 
     /**
@@ -92,66 +69,40 @@ public class VeterinarianQueryServiceImpl implements VeterinarianQueryService {
     @Override
     public Optional<Veterinarian> handle(GetVeterinarianByUserIdQuery query) {
 
-        var veterinarian = veterinarianRepository.findByUserId(
-                new UserId(query.userId())
-        );
-
-        if (veterinarian.isEmpty()) return Optional.empty();
-
-        var clinicId = veterinarian.get().getClinicId().clinicId();
-
-        var clinic = clinicRepository.findById(clinicId)
-                .orElseThrow(() -> new ClinicNotFoundException(clinicId));
-
-        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
-        var authenticatedAccountId = iamExternalService.fetchAccountIdByUserId(
-                authenticatedUserId);
-
-        var clinicAccountId = clinic.getAccountId().accountId();
-
-        var hasValidRole = iamExternalService.userHasRole(
-                authenticatedUserId, "ROLE_VETERINARIAN")
-                || iamExternalService.userHasRole(
-                authenticatedUserId, "ROLE_CLINIC_ADMIN");
-
-        if (!hasValidRole || !clinicAccountId.equals(authenticatedAccountId)) {
-            throw new ProfileOperationNotAllowedException(
-                    "You cannot access this veterinarian's profile");
-        }
-
-        return veterinarian;
+        validateAuthenticatedUser();
+        return veterinarianRepository.findByUserId(new UserId(query.userId()));
     }
 
     /**
-     * Retrieves all veterinarians belonging to a clinic.
+     * Retrieves veterinarians associated with a clinic.
      *
      * @param query the clinic identifier query
-     * @return the list of veterinarians
+     * @return the veterinarians belonging to the clinic
      */
     @Override
     public List<Veterinarian> handle(GetVeterinariansByClinicIdQuery query) {
-        var clinic = clinicRepository.findById(query.clinicId())
-                .orElseThrow(() ->
-                        new ClinicNotFoundException(query.clinicId()));
 
-        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
-        var authenticatedAccountId = iamExternalService.fetchAccountIdByUserId(
-                authenticatedUserId);
+        validateAuthenticatedUser();
 
-        var clinicAccountId = clinic.getAccountId().accountId();
-
-        var hasValidRole = iamExternalService.userHasRole(
-                authenticatedUserId, "ROLE_VETERINARIAN")
-                || iamExternalService.userHasRole(
-                authenticatedUserId, "ROLE_CLINIC_ADMIN");
-
-        if (!hasValidRole || !clinicAccountId.equals(authenticatedAccountId)) {
-            throw new ProfileOperationNotAllowedException(
-                    "You cannot access this clinic's veterinarians");
+        if (!clinicRepository.existsById(query.clinicId())) {
+            throw new ClinicNotFoundException(query.clinicId());
         }
 
         return veterinarianRepository.findByClinicId(
-                new ClinicId(query.clinicId())
-        );
+                new ClinicId(query.clinicId()));
+    }
+
+    /**
+     * Validates that the authenticated user is active.
+     */
+    private void validateAuthenticatedUser() {
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        if (authenticatedUserId == null || authenticatedUserId <= 0
+                || !iamExternalService.existsActiveUser(authenticatedUserId)) {
+            throw new ProfileOperationNotAllowedException(
+                    "You are not authorized to access veterinarian profiles");
+        }
     }
 }

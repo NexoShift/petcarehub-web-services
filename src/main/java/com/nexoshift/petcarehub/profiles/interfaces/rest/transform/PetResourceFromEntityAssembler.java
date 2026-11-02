@@ -22,6 +22,7 @@ public class PetResourceFromEntityAssembler {
         return new PetResource(
                 entity.getId(),
                 entity.getOwnerId().ownerId(),
+                entity.getPetCode().value(),
                 entity.getName(),
                 entity.getSpecies(),
                 entity.getBreed(),

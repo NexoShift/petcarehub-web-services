@@ -46,40 +46,32 @@ public class ClinicQueryServiceImpl implements ClinicQueryService {
     }
 
     /**
-     * Retrieves a clinic by its profile identifier.
+     * Retrieves a clinic by its identifier.
      *
      * @param query the clinic identifier query
      * @return the clinic, if found
      */
     @Override
     public Optional<Clinic> handle(GetClinicByIdQuery query) {
-        var clinic = clinicRepository.findById(query.clinicId());
 
-        if (clinic.isEmpty()) return Optional.empty();
+        validateAuthenticatedUser();
 
-        validateClinicAccess(clinic.get());
-
-        return clinic;
+        return clinicRepository.findById(query.clinicId());
     }
 
     /**
      * Retrieves a clinic by its IAM account identifier.
      *
-     * @param query the IAM account identifier query
+     * @param query the account identifier query
      * @return the clinic, if found
      */
     @Override
     public Optional<Clinic> handle(GetClinicByAccountIdQuery query) {
 
-        var clinic = clinicRepository.findByAccountId(
-                new AccountId(query.accountId())
-        );
+        validateAuthenticatedUser();
 
-        if (clinic.isEmpty()) return Optional.empty();
-
-        validateClinicAccess(clinic.get());
-
-        return clinic;
+        return clinicRepository.findByAccountId(
+                new AccountId(query.accountId()));
     }
 
     /**
@@ -265,6 +257,21 @@ public class ClinicQueryServiceImpl implements ClinicQueryService {
 
         if (!exists) {
             throw new ConsultingRoomNotFoundException(consultingRoomId);
+        }
+    }
+
+    /**
+     * Validates that the authenticated user is active.
+     */
+    private void validateAuthenticatedUser() {
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        if (authenticatedUserId == null || authenticatedUserId <= 0
+                || !iamExternalService.existsActiveUser(authenticatedUserId)) {
+
+            throw new ProfileOperationNotAllowedException(
+                    "You are not authorized to access clinic profiles");
         }
     }
 }
