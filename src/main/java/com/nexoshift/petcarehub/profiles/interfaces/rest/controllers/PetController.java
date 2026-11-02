@@ -1,6 +1,8 @@
 package com.nexoshift.petcarehub.profiles.interfaces.rest.controllers;
 
 import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.storage.ProfileImageStorageService;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.PetNotFoundException;
+import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Pet;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdatePetImageCommand;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetPetByIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.services.PetCommandService;
@@ -20,6 +22,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Optional;
 
 /**
  * REST controller for managing pet profiles.
@@ -234,20 +238,30 @@ public class PetController {
             return ResponseEntity.badRequest().build();
         }
 
-        var newImageKey = profileImageStorageService.upload(
-                image,
-                IMAGE_FOLDER
-        );
+        var newImageKey = profileImageStorageService.upload(image, IMAGE_FOLDER);
 
-        var updatePetImageCommand = new UpdatePetImageCommand(
-                petId,
-                newImageKey
-        );
+        if (newImageKey == null) {
+            return ResponseEntity.badRequest().build();
+        }
 
-        var updatedPet = petCommandService.handle(updatePetImageCommand);
+        Optional<Pet> updatedPet;
 
-        if (updatedPet.isEmpty()) {
-            return ResponseEntity.notFound().build();
+        try {
+            var command = new UpdatePetImageCommand(petId, newImageKey);
+
+            updatedPet = petCommandService.handle(command);
+
+            if (updatedPet.isEmpty()) {
+                throw new PetNotFoundException(petId);
+            }
+
+        } catch (RuntimeException e) {
+            try {
+                profileImageStorageService.delete(newImageKey);
+            } catch (RuntimeException cleanupError) {
+                e.addSuppressed(cleanupError);
+            }
+            throw e;
         }
 
         if (previousImageKey != null && !previousImageKey.equals(newImageKey)) {
