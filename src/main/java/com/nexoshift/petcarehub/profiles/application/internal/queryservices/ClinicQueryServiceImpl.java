@@ -1,7 +1,9 @@
 package com.nexoshift.petcarehub.profiles.application.internal.queryservices;
 
+import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.IamExternalService;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.ClinicNotFoundException;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.ConsultingRoomNotFoundException;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAllowedException;
 import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Clinic;
 import com.nexoshift.petcarehub.profiles.domain.model.entities.ConsultingRoom;
 import com.nexoshift.petcarehub.profiles.domain.model.entities.ConsultingRoomAssignment;
@@ -28,14 +30,19 @@ import java.util.Optional;
 public class ClinicQueryServiceImpl implements ClinicQueryService {
 
     private final ClinicRepository clinicRepository;
+    private final IamExternalService iamExternalService;
 
     /**
      * Constructs a clinic query service.
      *
      * @param clinicRepository the clinic repository
+     * @param iamExternalService the IAM external service
      */
-    public ClinicQueryServiceImpl(ClinicRepository clinicRepository) {
+    public ClinicQueryServiceImpl(
+            ClinicRepository clinicRepository,
+            IamExternalService iamExternalService) {
         this.clinicRepository = clinicRepository;
+        this.iamExternalService = iamExternalService;
     }
 
     /**
@@ -46,7 +53,13 @@ public class ClinicQueryServiceImpl implements ClinicQueryService {
      */
     @Override
     public Optional<Clinic> handle(GetClinicByIdQuery query) {
-        return clinicRepository.findById(query.clinicId());
+        var clinic = clinicRepository.findById(query.clinicId());
+
+        if (clinic.isEmpty()) return Optional.empty();
+
+        validateClinicAccess(clinic.get());
+
+        return clinic;
     }
 
     /**
@@ -57,9 +70,16 @@ public class ClinicQueryServiceImpl implements ClinicQueryService {
      */
     @Override
     public Optional<Clinic> handle(GetClinicByAccountIdQuery query) {
-        return clinicRepository.findByAccountId(
+
+        var clinic = clinicRepository.findByAccountId(
                 new AccountId(query.accountId())
         );
+
+        if (clinic.isEmpty()) return Optional.empty();
+
+        validateClinicAccess(clinic.get());
+
+        return clinic;
     }
 
     /**
@@ -71,6 +91,8 @@ public class ClinicQueryServiceImpl implements ClinicQueryService {
     @Override
     public Optional<ConsultingRoom> handle(GetConsultingRoomByIdQuery query) {
         var clinic = findClinic(query.clinicId());
+
+        validateClinicAccess(clinic);
 
         return clinic.getConsultingRooms().stream()
                 .filter(room ->
@@ -88,6 +110,8 @@ public class ClinicQueryServiceImpl implements ClinicQueryService {
     public List<ConsultingRoom> handle(GetConsultingRoomsByClinicIdQuery query) {
         var clinic = findClinic(query.clinicId());
 
+        validateClinicAccess(clinic);
+
         return List.copyOf(clinic.getConsultingRooms());
     }
 
@@ -101,6 +125,8 @@ public class ClinicQueryServiceImpl implements ClinicQueryService {
     public List<ConsultingRoomAssignment> handle(GetConsultingRoomAssignmentsByClinicIdQuery query) {
 
         var clinic = findClinic(query.clinicId());
+
+        validateClinicAdmin(clinic);
 
         return List.copyOf(clinic.getAssignments());
     }
@@ -116,6 +142,8 @@ public class ClinicQueryServiceImpl implements ClinicQueryService {
             GetAssignmentsByConsultingRoomIdQuery query) {
 
         var clinic = findClinic(query.clinicId());
+
+        validateClinicAdmin(clinic);
 
         ensureConsultingRoomExists(
                 clinic,
@@ -142,6 +170,8 @@ public class ClinicQueryServiceImpl implements ClinicQueryService {
 
         var clinic = findClinic(query.clinicId());
 
+        validateClinicAccess(clinic);
+
         ensureConsultingRoomExists(clinic, query.consultingRoomId());
 
         return clinic.getAssignments().stream()
@@ -151,6 +181,61 @@ public class ClinicQueryServiceImpl implements ClinicQueryService {
                                 .consultingRoomId()
                                 .equals(query.consultingRoomId()))
                 .findFirst();
+    }
+
+    /**
+     * Validates whether the authenticated user can access a clinic.
+     *
+     * @param clinic the clinic to validate
+     */
+    private void validateClinicAccess(Clinic clinic) {
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        var clinicAccountId = clinic.getAccountId().accountId();
+
+        var authenticatedAccountId = iamExternalService.fetchAccountIdByUserId(
+                authenticatedUserId
+        );
+
+        var hasValidRole = iamExternalService.userHasRole(
+                authenticatedUserId, "ROLE_CLINIC_ADMIN"
+        ) || iamExternalService.userHasRole(
+                authenticatedUserId, "ROLE_VETERINARIAN"
+        );
+
+        if (!hasValidRole || !clinicAccountId.equals(authenticatedAccountId)) {
+            throw new ProfileOperationNotAllowedException(
+                    "You cannot access this clinic's information"
+            );
+        }
+    }
+
+    /**
+     * Validates whether the authenticated user can access
+     * a clinic's administrative information.
+     *
+     * @param clinic the clinic to validate
+     */
+    private void validateClinicAdmin(Clinic clinic) {
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        var clinicAccountId = clinic.getAccountId().accountId();
+
+        var authenticatedAccountId = iamExternalService.fetchAccountIdByUserId(
+                authenticatedUserId
+        );
+
+        var hasAdminRole = iamExternalService.userHasRole(
+                authenticatedUserId, "ROLE_CLINIC_ADMIN"
+        );
+
+        if (!hasAdminRole || !clinicAccountId.equals(authenticatedAccountId)) {
+            throw new ProfileOperationNotAllowedException(
+                    "You cannot access this clinic's administrative information"
+            );
+        }
     }
 
     /**
@@ -176,12 +261,10 @@ public class ClinicQueryServiceImpl implements ClinicQueryService {
             Long consultingRoomId) {
 
         boolean exists = clinic.getConsultingRooms().stream()
-                .anyMatch(room ->
-                        room.getId().equals(consultingRoomId));
+                .anyMatch(room -> room.getId().equals(consultingRoomId));
 
         if (!exists) {
-            throw new ConsultingRoomNotFoundException(
-                    consultingRoomId);
+            throw new ConsultingRoomNotFoundException(consultingRoomId);
         }
     }
 }

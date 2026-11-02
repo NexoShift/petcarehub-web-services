@@ -1,7 +1,9 @@
 package com.nexoshift.petcarehub.profiles.application.internal.commandservices;
 
+import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.IamExternalService;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.ClinicNotFoundException;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileAlreadyExistsException;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAllowedException;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.VeterinarianNotFoundException;
 import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Veterinarian;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.CreateVeterinarianCommand;
@@ -27,6 +29,7 @@ public class VeterinarianCommandServiceImpl implements VeterinarianCommandServic
 
     private final VeterinarianRepository veterinarianRepository;
     private final ClinicRepository clinicRepository;
+    private final IamExternalService iamExternalService;
 
     /**
      * Constructs the veterinarian command service.
@@ -36,9 +39,11 @@ public class VeterinarianCommandServiceImpl implements VeterinarianCommandServic
      */
     public VeterinarianCommandServiceImpl(
             VeterinarianRepository veterinarianRepository,
-            ClinicRepository clinicRepository) {
+            ClinicRepository clinicRepository,
+            IamExternalService iamExternalService) {
         this.veterinarianRepository = veterinarianRepository;
         this.clinicRepository = clinicRepository;
+        this.iamExternalService = iamExternalService;
     }
 
     /**
@@ -50,8 +55,37 @@ public class VeterinarianCommandServiceImpl implements VeterinarianCommandServic
     @Override
     public Long handle(CreateVeterinarianCommand command) {
 
-        if (!clinicRepository.existsById(command.clinicId())) {
-            throw new ClinicNotFoundException(command.clinicId());
+        var clinic = clinicRepository.findById(command.clinicId())
+                .orElseThrow(() ->
+                        new ClinicNotFoundException(command.clinicId()));
+
+        var clinicAccountId = clinic.getAccountId().accountId();
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        if (!iamExternalService.userHasRole(
+                authenticatedUserId, "ROLE_CLINIC_ADMIN")
+                || !iamExternalService.fetchAccountIdByUserId(authenticatedUserId)
+                .equals(clinicAccountId)) {
+            throw new ProfileOperationNotAllowedException("You cannot register veterinarians for this clinic");
+        }
+
+        if (!iamExternalService.existsActiveUser(command.userId())) {
+            throw new ProfileOperationNotAllowedException("User does not exist or is inactive");
+        }
+
+        if (!iamExternalService.userHasRole(
+                command.userId(), "ROLE_VETERINARIAN")) {
+            throw new ProfileOperationNotAllowedException(
+                    "User does not have the veterinarian role");
+        }
+
+        var veterinarianAccountId = iamExternalService.fetchAccountIdByUserId(
+                command.userId());
+
+        if (!veterinarianAccountId.equals(clinicAccountId)
+                || !"CLINIC".equals(iamExternalService.fetchAccountTypeByAccountId(veterinarianAccountId))) {
+            throw new ProfileOperationNotAllowedException("Veterinarian does not belong to this clinic account");
         }
 
         var userId = new UserId(command.userId());
@@ -79,6 +113,24 @@ public class VeterinarianCommandServiceImpl implements VeterinarianCommandServic
                 .orElseThrow(() ->
                         new VeterinarianNotFoundException(command.veterinarianId()));
 
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        var veterinarianUserId = veterinarian.getUserId().userId();
+
+        var clinic = clinicRepository.findById(veterinarian.getClinicId().clinicId())
+                .orElseThrow(() -> new ClinicNotFoundException(veterinarian.getClinicId().clinicId()));
+
+        var clinicAccountId = clinic.getAccountId().accountId();
+
+        var isOwner = veterinarianUserId.equals(authenticatedUserId);
+
+        var isClinicAdmin = iamExternalService.userHasRole(authenticatedUserId, "ROLE_CLINIC_ADMIN")
+                && iamExternalService.fetchAccountIdByUserId(authenticatedUserId).equals(clinicAccountId);
+
+        if (!isOwner && !isClinicAdmin) {
+            throw new ProfileOperationNotAllowedException("You cannot update this veterinarian's profile");
+        }
+
         veterinarian.updateProfile(
                 command.firstName(),
                 command.lastName(),
@@ -101,8 +153,25 @@ public class VeterinarianCommandServiceImpl implements VeterinarianCommandServic
     public Optional<Veterinarian> handle(UpdateVeterinarianImageCommand command) {
 
         var veterinarian = veterinarianRepository.findById(command.veterinarianId())
-                .orElseThrow(() ->
-                        new VeterinarianNotFoundException(command.veterinarianId()));
+                .orElseThrow(() -> new VeterinarianNotFoundException(command.veterinarianId()));
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        var veterinarianUserId = veterinarian.getUserId().userId();
+
+        var clinic = clinicRepository.findById(veterinarian.getClinicId().clinicId())
+                .orElseThrow(() -> new ClinicNotFoundException(veterinarian.getClinicId().clinicId()));
+
+        var clinicAccountId = clinic.getAccountId().accountId();
+
+        var isOwner = veterinarianUserId.equals(authenticatedUserId);
+
+        var isClinicAdmin = iamExternalService.userHasRole(authenticatedUserId, "ROLE_CLINIC_ADMIN")
+                && iamExternalService.fetchAccountIdByUserId(authenticatedUserId).equals(clinicAccountId);
+
+        if (!isOwner && !isClinicAdmin) {
+            throw new ProfileOperationNotAllowedException("You cannot update this veterinarian's profile image");
+        }
 
         veterinarian.updateProfileImage(command.profileImageKey());
 

@@ -1,6 +1,8 @@
 package com.nexoshift.petcarehub.profiles.interfaces.rest.controllers;
 
 import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.storage.ProfileImageStorageService;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.PetOwnerNotFoundException;
+import com.nexoshift.petcarehub.profiles.domain.model.aggregates.PetOwner;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdatePetOwnerImageCommand;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetPetOwnerByIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.services.PetOwnerCommandService;
@@ -26,6 +28,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -182,10 +185,25 @@ public class PetOwnerController {
 
         if(newImageKey == null) return ResponseEntity.badRequest().build();
 
-        var command = new UpdatePetOwnerImageCommand(petOwnerId,newImageKey);
+        Optional<PetOwner> updatedPetOwner;
 
-        var updatedPetOwner = petOwnerCommandService.handle(command);
-        if(updatedPetOwner.isEmpty()) return ResponseEntity.notFound().build();
+        try {
+            var command = new UpdatePetOwnerImageCommand(petOwnerId, newImageKey);
+
+            updatedPetOwner = petOwnerCommandService.handle(command);
+
+            if (updatedPetOwner.isEmpty()) {
+                throw new PetOwnerNotFoundException(petOwnerId);
+            }
+
+        } catch (RuntimeException e) {
+            try {
+                profileImageStorageService.delete(newImageKey);
+            } catch (RuntimeException cleanupError) {
+                e.addSuppressed(cleanupError);
+            }
+            throw e;
+        }
 
         if(previousImageKey != null && !previousImageKey.equalsIgnoreCase(newImageKey)) {
             profileImageStorageService.delete(previousImageKey);

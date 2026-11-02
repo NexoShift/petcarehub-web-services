@@ -1,6 +1,8 @@
 package com.nexoshift.petcarehub.profiles.interfaces.rest.controllers;
 
 import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.storage.ProfileImageStorageService;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.VeterinarianNotFoundException;
+import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Veterinarian;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdateVeterinarianImageCommand;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetVeterinarianByIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.services.VeterinarianCommandService;
@@ -20,6 +22,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Optional;
 
 /**
  * REST controller for managing veterinarian profiles.
@@ -220,11 +224,27 @@ public class VeterinarianController {
             return ResponseEntity.badRequest().build();
         }
 
-        var command = new UpdateVeterinarianImageCommand(veterinarianId, newImageKey);
+        Optional<Veterinarian> updatedVeterinarian;
 
-        var updatedVeterinarian = veterinarianCommandService.handle(command);
+        try {
+            var command = new UpdateVeterinarianImageCommand(
+                    veterinarianId, newImageKey
+            );
 
-        if(updatedVeterinarian.isEmpty()) return ResponseEntity.notFound().build();
+            updatedVeterinarian = veterinarianCommandService.handle(command);
+
+            if (updatedVeterinarian.isEmpty()) {
+                throw new VeterinarianNotFoundException(veterinarianId);
+            }
+
+        } catch (RuntimeException e) {
+            try {
+                profileImageStorageService.delete(newImageKey);
+            } catch (RuntimeException cleanupError) {
+                e.addSuppressed(cleanupError);
+            }
+            throw e;
+        }
 
         if (previousImageKey != null && !previousImageKey.equals(newImageKey)) {
             profileImageStorageService.delete(previousImageKey);

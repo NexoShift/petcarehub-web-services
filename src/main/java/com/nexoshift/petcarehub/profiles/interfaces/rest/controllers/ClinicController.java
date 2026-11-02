@@ -1,6 +1,8 @@
 package com.nexoshift.petcarehub.profiles.interfaces.rest.controllers;
 
 import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.storage.ProfileImageStorageService;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ClinicNotFoundException;
+import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Clinic;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdateClinicImageCommand;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetClinicByIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.services.ClinicCommandService;
@@ -20,6 +22,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Optional;
 
 /**
  * REST controller for managing clinic profiles.
@@ -212,17 +216,32 @@ public class ClinicController {
 
         if (newImageKey == null) return ResponseEntity.badRequest().build();
 
-        var command = new UpdateClinicImageCommand(clinicId, newImageKey);
+        Optional<Clinic> updatedClinic;
 
-        var updatedClinic = clinicCommandService.handle(command);
+        try {
+            var command = new UpdateClinicImageCommand(clinicId, newImageKey);
 
-        if(updatedClinic.isEmpty()) return ResponseEntity.badRequest().build();
+            updatedClinic = clinicCommandService.handle(command);
+
+            if (updatedClinic.isEmpty()) {
+                throw new ClinicNotFoundException(clinicId);
+            }
+
+        } catch (RuntimeException e) {
+            try {
+                profileImageStorageService.delete(newImageKey);
+            } catch (RuntimeException cleanupError) {
+                e.addSuppressed(cleanupError);
+            }
+            throw e;
+        }
 
         if(previousImageKey != null && !previousImageKey.equals(newImageKey)) {
             profileImageStorageService.delete(previousImageKey);
         }
 
         var clinicEntity = updatedClinic.get();
+
         var profileImageUrl = profileImageStorageService.generatePresignedUrl(
                 clinicEntity.getProfileImageKey()
         );
