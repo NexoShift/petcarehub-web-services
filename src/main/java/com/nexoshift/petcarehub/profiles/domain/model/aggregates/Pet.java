@@ -2,6 +2,7 @@ package com.nexoshift.petcarehub.profiles.domain.model.aggregates;
 
 import com.nexoshift.petcarehub.profiles.domain.model.commands.CreatePetCommand;
 import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.OwnerId;
+import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.PetCode;
 import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.PetSex;
 import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.Species;
 import com.nexoshift.petcarehub.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
@@ -36,6 +37,13 @@ public class Pet extends AuditableAbstractAggregateRoot<Pet> {
     @Column(length = 500)
     private String profileImageKey;
 
+    @Embedded
+    @AttributeOverride(
+            name = "value",
+            column = @Column(name = "pet_code", nullable = false, unique = true, updatable = false, length = 12)
+    )
+    private PetCode petCode;
+
     protected Pet(){
         super();
     }
@@ -65,6 +73,7 @@ public class Pet extends AuditableAbstractAggregateRoot<Pet> {
         this.birthDate = command.birthDate();
         this.sex = command.sex();
         this.profileImageKey = command.profileImageKey();
+        this.petCode = PetCode.generate();
     }
 
     public void updateProfile(String name, Species species, String breed, LocalDate birthDate, PetSex sex){
