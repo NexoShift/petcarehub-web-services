@@ -4,14 +4,17 @@ import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.s
 import com.nexoshift.petcarehub.profiles.domain.exceptions.PetNotFoundException;
 import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Pet;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdatePetImageCommand;
+import com.nexoshift.petcarehub.profiles.domain.model.queries.GetPetByCodeQuery;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetPetByIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.services.PetCommandService;
 import com.nexoshift.petcarehub.profiles.domain.services.PetQueryService;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.resources.CreatePetResource;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.resources.PetResource;
+import com.nexoshift.petcarehub.profiles.interfaces.rest.resources.PetSearchResource;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.resources.UpdatePetResource;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.transform.CreatePetCommandFromResourceAssembler;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.transform.PetResourceFromEntityAssembler;
+import com.nexoshift.petcarehub.profiles.interfaces.rest.transform.PetSearchResourceFromEntityAssembler;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.transform.UpdatePetCommandFromResourceAssembler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -276,6 +279,40 @@ public class PetController {
 
         var petResource = PetResourceFromEntityAssembler
                 .toResourceFromEntity(petEntity, profileImageUrl);
+
+        return ResponseEntity.ok(petResource);
+    }
+
+    /**
+     * Retrieves a pet by its unique identification code.
+     *
+     * @param petCode the pet identification code
+     * @return the pet search resource
+     */
+    @GetMapping(params = "petCode")
+    @Operation(
+            summary = "Find pet by code",
+            description = "Retrieve basic pet information using its unique identification code"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Pet found"),
+            @ApiResponse(responseCode = "400", description = "Invalid pet code"),
+            @ApiResponse(responseCode = "403", description = "Access denied"),
+            @ApiResponse(responseCode = "404", description = "Pet not found")
+    })
+    public ResponseEntity<PetSearchResource> getPetByCode(
+            @RequestParam String petCode) {
+
+        var query = new GetPetByCodeQuery(petCode);
+
+        var pet = petQueryService.handle(query);
+
+        if (pet.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        var petResource = PetSearchResourceFromEntityAssembler
+                .toResourceFromEntity(pet.get());
 
         return ResponseEntity.ok(petResource);
     }
