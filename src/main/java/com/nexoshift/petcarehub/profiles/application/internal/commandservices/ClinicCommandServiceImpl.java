@@ -1,5 +1,6 @@
 package com.nexoshift.petcarehub.profiles.application.internal.commandservices;
 
+import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.IamExternalService;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.ClinicNotFoundException;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileAlreadyExistsException;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAllowedException;
@@ -30,18 +31,22 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
 
     private final ClinicRepository clinicRepository;
     private final VeterinarianRepository veterinarianRepository;
+    private final IamExternalService iamExternalService;
 
     /**
      * Constructs the clinic command service.
      *
      * @param clinicRepository the clinic repository
      * @param veterinarianRepository the veterinarian repository
+     * @param iamExternalService the IAM external service
      */
     public ClinicCommandServiceImpl(
             ClinicRepository clinicRepository,
-            VeterinarianRepository veterinarianRepository) {
+            VeterinarianRepository veterinarianRepository,
+            IamExternalService iamExternalService) {
         this.clinicRepository = clinicRepository;
         this.veterinarianRepository = veterinarianRepository;
+        this.iamExternalService = iamExternalService;
     }
 
     /**
@@ -53,11 +58,36 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
     @Override
     public Long handle(CreateClinicCommand command) {
 
+        if (!iamExternalService.existsActiveAccount(command.accountId())) {
+            throw new ProfileOperationNotAllowedException("Account does not exist or is inactive");
+        }
+
+        if (!"CLINIC".equals(iamExternalService.fetchAccountTypeByAccountId(command.accountId()))) {
+            throw new ProfileOperationNotAllowedException("Account is not a clinic account");
+        }
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        var hasAdminRole = iamExternalService.userHasRole(
+                authenticatedUserId, "ROLE_CLINIC_ADMIN"
+        );
+
+        var belongsToAccount = command.accountId().equals(
+                iamExternalService.fetchAccountIdByUserId(authenticatedUserId)
+        );
+
+        if (!hasAdminRole || !belongsToAccount) {
+            throw new ProfileOperationNotAllowedException(
+                    "You cannot create a profile for this clinic"
+            );
+        }
+
         var accountId = new AccountId(command.accountId());
 
         if (clinicRepository.existsByAccountId(accountId)) {
             throw new ProfileAlreadyExistsException(
-                    "Clinic", command.accountId());
+                    "Clinic", command.accountId()
+            );
         }
 
         var clinic = new Clinic(command);
@@ -75,6 +105,8 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
     public Optional<Clinic> handle(UpdateClinicCommand command) {
 
         var clinic = findClinic(command.clinicId());
+
+        validateClinicAdmin(clinic);
 
         clinic.updateProfile(
                 command.name(),
@@ -98,6 +130,8 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
 
         var clinic = findClinic(command.clinicId());
 
+        validateClinicAdmin(clinic);
+
         clinic.updateProfileImage(command.profileImageKey());
 
         return Optional.of(clinicRepository.save(clinic));
@@ -114,6 +148,8 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
 
         var clinic = clinicRepository.findById(command.clinicId())
                 .orElseThrow(() -> new ClinicNotFoundException(command.clinicId()));
+
+        validateClinicAdmin(clinic);
 
         var consultingRoom = clinic.addConsultingRoom(
                 command.name(),
@@ -135,6 +171,8 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
 
         var clinic = findClinic(command.clinicId());
 
+        validateClinicAdmin(clinic);
+
         clinic.updateConsultingRoom(
                 command.consultingRoomId(),
                 command.name(),
@@ -155,6 +193,8 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
 
         var clinic = findClinic(command.clinicId());
 
+        validateClinicAdmin(clinic);
+
         clinic.activateConsultingRoom(command.consultingRoomId());
 
         clinicRepository.save(clinic);
@@ -170,6 +210,8 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
     public void handle(DeactivateConsultingRoomCommand command) {
 
         var clinic = findClinic(command.clinicId());
+
+        validateClinicAdmin(clinic);
 
         clinic.deactivateConsultingRoom(command.consultingRoomId());
 
@@ -187,6 +229,8 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
 
         var clinic = findClinic(command.clinicId());
 
+        validateClinicAdmin(clinic);
+
         clinic.removeConsultingRoom(command.consultingRoomId());
 
         clinicRepository.save(clinic);
@@ -202,10 +246,9 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
     @Transactional
     public void handle(AssignVeterinarianCommand command) {
 
-        var clinic = clinicRepository.findById(command.clinicId())
-                .orElseThrow(() ->
-                        new ClinicNotFoundException(command.clinicId())
-                );
+        var clinic = findClinic(command.clinicId());
+
+        validateClinicAdmin(clinic);
 
         var veterinarian = veterinarianRepository.findById(
                 command.veterinarianId()
@@ -237,6 +280,8 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
 
         var clinic = findClinic(command.clinicId());
 
+        validateClinicAdmin(clinic);
+
         clinic.unassignVeterinarian(command.assignmentId());
 
         clinicRepository.save(clinic);
@@ -253,4 +298,30 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
                 .orElseThrow(() ->
                         new ClinicNotFoundException(clinicId));
     }
+
+    /**
+     * Validates whether the authenticated user can manage a clinic.
+     *
+     * @param clinic the clinic to validate
+     */
+    private void validateClinicAdmin(Clinic clinic) {
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+        var clinicAccountId = clinic.getAccountId().accountId();
+
+        var hasAdminRole = iamExternalService.userHasRole(
+                authenticatedUserId, "ROLE_CLINIC_ADMIN"
+        );
+
+        var belongsToClinic = clinicAccountId.equals(
+                iamExternalService.fetchAccountIdByUserId(authenticatedUserId)
+        );
+
+        if (!hasAdminRole || !belongsToClinic) {
+            throw new ProfileOperationNotAllowedException(
+                    "You cannot manage this clinic"
+            );
+        }
+    }
+
 }
