@@ -1,5 +1,7 @@
 package com.nexoshift.petcarehub.profiles.application.internal.queryservices;
 
+import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.IamExternalService;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAllowedException;
 import com.nexoshift.petcarehub.profiles.domain.model.aggregates.PetOwner;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetPetOwnerByIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetPetOwnerByUserIdQuery;
@@ -21,14 +23,16 @@ import java.util.Optional;
 public class PetOwnerQueryServiceImpl implements PetOwnerQueryService {
 
     private final PetOwnerRepository petOwnerRepository;
+    private final IamExternalService iamExternalService;
 
     /**
      * Constructs a pet owner query service.
      *
      * @param petOwnerRepository the pet owner repository
      */
-    public PetOwnerQueryServiceImpl(PetOwnerRepository petOwnerRepository) {
+    public PetOwnerQueryServiceImpl(PetOwnerRepository petOwnerRepository, IamExternalService iamExternalService) {
         this.petOwnerRepository = petOwnerRepository;
+        this.iamExternalService = iamExternalService;
     }
 
     /**
@@ -39,7 +43,19 @@ public class PetOwnerQueryServiceImpl implements PetOwnerQueryService {
      */
     @Override
     public Optional<PetOwner> handle(GetPetOwnerByIdQuery query) {
-        return petOwnerRepository.findById(query.petOwnerId());
+
+        var petOwner = petOwnerRepository.findById(query.petOwnerId());
+
+        if (petOwner.isEmpty()) return Optional.empty();
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        if (!petOwner.get().getUserId().userId().equals(authenticatedUserId)) {
+            throw new ProfileOperationNotAllowedException(
+                    "You cannot access another user's profile");
+        }
+
+        return petOwner;
     }
 
     /**
@@ -50,8 +66,12 @@ public class PetOwnerQueryServiceImpl implements PetOwnerQueryService {
      */
     @Override
     public Optional<PetOwner> handle(GetPetOwnerByUserIdQuery query) {
-        return petOwnerRepository.findByUserId(
-                new UserId(query.userId())
-        );
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        if (!query.userId().equals(authenticatedUserId)) {
+            throw new ProfileOperationNotAllowedException(
+                    "You cannot access another user's profile");
+        }
+        return petOwnerRepository.findByUserId(new UserId(query.userId()));
     }
 }
