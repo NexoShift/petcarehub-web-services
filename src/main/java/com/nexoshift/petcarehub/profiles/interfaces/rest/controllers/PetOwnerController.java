@@ -1,6 +1,8 @@
 package com.nexoshift.petcarehub.profiles.interfaces.rest.controllers;
 
 import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.storage.ProfileImageStorageService;
+import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.IamExternalService;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAllowedException;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.PetOwnerNotFoundException;
 import com.nexoshift.petcarehub.profiles.domain.model.aggregates.PetOwner;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdatePetOwnerImageCommand;
@@ -48,6 +50,7 @@ public class PetOwnerController {
     private final PetOwnerCommandService petOwnerCommandService;
     private final PetOwnerQueryService petOwnerQueryService;
     private final ProfileImageStorageService profileImageStorageService;
+    private final IamExternalService iamExternalService;
 
     /**
      * Constructs the pet owner controller.
@@ -58,11 +61,13 @@ public class PetOwnerController {
     public PetOwnerController(
             PetOwnerCommandService petOwnerCommandService,
             PetOwnerQueryService petOwnerQueryService,
-            ProfileImageStorageService profileImageStorageService) {
+            ProfileImageStorageService profileImageStorageService,
+            IamExternalService iamExternalService) {
 
         this.petOwnerCommandService = petOwnerCommandService;
         this.petOwnerQueryService = petOwnerQueryService;
-        this.profileImageStorageService= profileImageStorageService;
+        this.profileImageStorageService = profileImageStorageService;
+        this.iamExternalService = iamExternalService;
     }
 
 
@@ -80,6 +85,11 @@ public class PetOwnerController {
             @ApiResponse(responseCode = "409", description = "Pet owner profile already exists")
     })
     public ResponseEntity<PetOwnerResource> createPetOwner(@ModelAttribute CreatePetOwnerResource resource) {
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+        if (!authenticatedUserId.equals(resource.userId())) {
+            throw new ProfileOperationNotAllowedException("You cannot create a profile for another user");
+        }
 
         var profileImageKey = profileImageStorageService.upload(resource.image(), IMAGE_FOLDER);
 

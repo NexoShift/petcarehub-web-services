@@ -1,6 +1,6 @@
 package com.nexoshift.petcarehub.profiles.application.internal.outboundservices.storage;
 
-import com.nexoshift.petcarehub.shared.domain.services.FileStorageService;
+import com.nexoshift.petcarehub.shared.domain.services.FileStorageServiceS3;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,14 +18,14 @@ public class ProfileImageStorageService {
     private static final long MAX_IMAGE_SIZE = 5L * 1024 * 1024;
     private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
 
-    private final FileStorageService fileStorageService;
+    private final FileStorageServiceS3 fileStorageService;
 
     /**
      * Constructs the profile image storage service.
      *
      * @param fileStorageService the file storage service
      */
-    public ProfileImageStorageService(FileStorageService fileStorageService){
+    public ProfileImageStorageService(FileStorageServiceS3 fileStorageService){
         this.fileStorageService = fileStorageService;
     }
 

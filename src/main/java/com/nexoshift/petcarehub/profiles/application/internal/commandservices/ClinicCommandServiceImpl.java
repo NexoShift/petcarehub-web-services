@@ -66,22 +66,6 @@ public class ClinicCommandServiceImpl implements ClinicCommandService {
             throw new ProfileOperationNotAllowedException("Account is not a clinic account");
         }
 
-        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
-
-        var hasAdminRole = iamExternalService.userHasRole(
-                authenticatedUserId, "ROLE_CLINIC_ADMIN"
-        );
-
-        var belongsToAccount = command.accountId().equals(
-                iamExternalService.fetchAccountIdByUserId(authenticatedUserId)
-        );
-
-        if (!hasAdminRole || !belongsToAccount) {
-            throw new ProfileOperationNotAllowedException(
-                    "You cannot create a profile for this clinic"
-            );
-        }
-
         var accountId = new AccountId(command.accountId());
 
         if (clinicRepository.existsByAccountId(accountId)) {

@@ -13,6 +13,11 @@ import com.nexoshift.petcarehub.profiles.interfaces.rest.resources.VeterinarianR
 import com.nexoshift.petcarehub.profiles.interfaces.rest.transform.CreateVeterinarianCommandFromResourceAssembler;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.transform.UpdateVeterinarianCommandFromResourceAssembler;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.transform.VeterinarianResourceFromEntityAssembler;
+import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.IamExternalService;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ClinicNotFoundException;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAllowedException;
+import com.nexoshift.petcarehub.profiles.domain.model.queries.GetClinicByIdQuery;
+import com.nexoshift.petcarehub.profiles.domain.services.ClinicQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -38,6 +43,8 @@ public class VeterinarianController {
     private final VeterinarianCommandService veterinarianCommandService;
     private final VeterinarianQueryService veterinarianQueryService;
     private final ProfileImageStorageService profileImageStorageService;
+    private final ClinicQueryService clinicQueryService;
+    private final IamExternalService iamExternalService;
 
     /**
      * Constructs the veterinarian controller.
@@ -49,11 +56,15 @@ public class VeterinarianController {
     public VeterinarianController(
             VeterinarianCommandService veterinarianCommandService,
             VeterinarianQueryService veterinarianQueryService,
-            ProfileImageStorageService profileImageStorageService) {
+            ProfileImageStorageService profileImageStorageService,
+            ClinicQueryService clinicQueryService,
+            IamExternalService iamExternalService) {
 
         this.veterinarianCommandService = veterinarianCommandService;
         this.veterinarianQueryService = veterinarianQueryService;
         this.profileImageStorageService = profileImageStorageService;
+        this.clinicQueryService = clinicQueryService;
+        this.iamExternalService = iamExternalService;
     }
 
     /**
@@ -72,6 +83,16 @@ public class VeterinarianController {
     })
     public ResponseEntity<VeterinarianResource> createVeterinarian(
             @ModelAttribute CreateVeterinarianResource resource) {
+
+        var clinic = clinicQueryService.handle(new GetClinicByIdQuery(resource.clinicId()))
+                .orElseThrow(() -> new ClinicNotFoundException(resource.clinicId()));
+        var clinicAccountId = clinic.getAccountId().accountId();
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+        if (!iamExternalService.userHasRole(authenticatedUserId, "ROLE_CLINIC_ADMIN")
+                || !iamExternalService.fetchAccountIdByUserId(authenticatedUserId).equals(clinicAccountId)) {
+            throw new ProfileOperationNotAllowedException("You cannot register veterinarians for this clinic");
+        }
 
         var profileImageKey = profileImageStorageService.upload(
                 resource.image(), IMAGE_FOLDER
