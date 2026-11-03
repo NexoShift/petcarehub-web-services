@@ -1,6 +1,6 @@
 package com.nexoshift.petcarehub.shared.infrastructure.storage.s3.services;
 
-import com.nexoshift.petcarehub.shared.domain.services.FileStorageService;
+import com.nexoshift.petcarehub.shared.domain.services.FileStorageServiceS3;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -16,7 +16,7 @@ import java.time.Duration;
 import java.util.UUID;
 
 @Service
-public class S3FileStorageService implements FileStorageService {
+public class S3FileStorageService implements FileStorageServiceS3 {
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
     private final String bucket;
