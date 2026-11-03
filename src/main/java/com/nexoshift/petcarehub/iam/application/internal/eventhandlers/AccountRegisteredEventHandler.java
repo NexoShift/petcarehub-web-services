@@ -21,7 +21,10 @@ public class AccountRegisteredEventHandler {
 
   @EventListener
   public void on(AccountRegisteredEvent event) {
+    var p = event.profile();
     eventPublisher.publishEvent(new AccountRegisteredIntegrationEvent(
-        event.accountId(), event.accountType().name(), event.holderUserId(), event.occurredAt()));
+            event.accountId(), event.accountType().name(), event.holderUserId(), event.email(),
+            p.firstName(), p.lastName(), p.phoneNumber(), p.clinicName(), p.ruc(),
+            event.occurredAt()));
   }
 }
