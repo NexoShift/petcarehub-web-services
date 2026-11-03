@@ -59,7 +59,7 @@ public class AccountCommandServiceImpl implements AccountCommandService {
     var account = Account.registerWithHolder(
         command.accountType(), email, passwordHash, resolveRoles(command.accountType().holderRoles()));
     account = accountRepository.save(account);
-    account.notifyRegistered();
+    account.notifyRegistered(command.profile());
     account = accountRepository.save(account);
     return Optional.of(account.holder());
   }

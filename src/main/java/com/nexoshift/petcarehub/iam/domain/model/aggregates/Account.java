@@ -5,11 +5,7 @@ import com.nexoshift.petcarehub.iam.domain.model.entities.User;
 import com.nexoshift.petcarehub.iam.domain.model.events.AccountRegisteredEvent;
 import com.nexoshift.petcarehub.iam.domain.model.events.UserDeactivatedEvent;
 import com.nexoshift.petcarehub.iam.domain.model.events.UserRegisteredEvent;
-import com.nexoshift.petcarehub.iam.domain.model.valueobjects.AccessRole;
-import com.nexoshift.petcarehub.iam.domain.model.valueobjects.AccountStatus;
-import com.nexoshift.petcarehub.iam.domain.model.valueobjects.AccountType;
-import com.nexoshift.petcarehub.iam.domain.model.valueobjects.EmailAddress;
-import com.nexoshift.petcarehub.iam.domain.model.valueobjects.PasswordHash;
+import com.nexoshift.petcarehub.iam.domain.model.valueobjects.*;
 import com.nexoshift.petcarehub.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -61,13 +57,13 @@ public class Account extends AuditableAbstractAggregateRoot<Account> {
   }
 
   /** Registers the creation events. Call it after the first save, when ids exist. */
-  public void notifyRegistered() {
+  public void notifyRegistered(HolderProfile profile) {
     var holder = holder();
     var now = Instant.now();
-    registerEvent(new AccountRegisteredEvent(getId(), type, holder.getId(), now));
+    registerEvent(new AccountRegisteredEvent(getId(), type, holder.getId(),
+            holder.getEmailAddress(), profile, now));
     registerEvent(new UserRegisteredEvent(holder.getId(), getId(), holder.getEmailAddress(), now));
   }
-
   /** Adds a member user (for example, a veterinarian registered by a clinic). */
   public User addMember(EmailAddress email, PasswordHash passwordHash, Set<Role> memberRoles) {
     if (!type.allowsMembers()) {
@@ -86,6 +82,8 @@ public class Account extends AuditableAbstractAggregateRoot<Account> {
     registerEvent(new UserRegisteredEvent(
         member.getId(), getId(), member.getEmailAddress(), Instant.now()));
   }
+
+
 
   public User activateUser(Long userId) {
     var user = findUser(userId);
