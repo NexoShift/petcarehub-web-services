@@ -48,10 +48,6 @@ public class PetOwnerCommandServiceImpl implements PetOwnerCommandService {
     @Override
     public Long handle(CreatePetOwnerCommand command) {
 
-        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
-        if(!authenticatedUserId.equals(command.userId())){
-            throw new ProfileOperationNotAllowedException("You cannot create a profile for another user");
-        }
 
         if(!iamExternalService.existsActiveUser(command.userId())){
             throw new ProfileOperationNotAllowedException("User does not exists or is inactive");
