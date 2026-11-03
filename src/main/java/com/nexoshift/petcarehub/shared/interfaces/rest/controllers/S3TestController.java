@@ -1,6 +1,6 @@
 package com.nexoshift.petcarehub.shared.interfaces.rest.controllers;
 
-import com.nexoshift.petcarehub.shared.domain.services.FileStorageService;
+import com.nexoshift.petcarehub.shared.domain.services.FileStorageServiceS3;
 import com.nexoshift.petcarehub.shared.interfaces.rest.resources.MessageResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,10 +14,10 @@ import java.util.Map;
 @RestController
 @RequestMapping("api/v1/test/s3")
 public class S3TestController {
-    private final FileStorageService fileStorageService;
+    private final FileStorageServiceS3 fileStorageServiceS3;
 
-    public S3TestController(FileStorageService fileStorageService){
-        this.fileStorageService = fileStorageService;
+    public S3TestController(FileStorageServiceS3 fileStorageServiceS3){
+        this.fileStorageServiceS3 = fileStorageServiceS3;
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -30,7 +30,7 @@ public class S3TestController {
         String objectKey;
 
         try(var inputStream = file.getInputStream()){
-            objectKey = fileStorageService.upload(inputStream, file.getSize(), file.getContentType(), "profile");
+            objectKey = fileStorageServiceS3.upload(inputStream, file.getSize(), file.getContentType(), "profile");
         }
         return ResponseEntity.ok(Map.of("message","File uploaded successfully", "objectKey", objectKey));
     }
@@ -39,7 +39,7 @@ public class S3TestController {
     public ResponseEntity<Map<String,String>> getUrl(@RequestParam String objectKey){
 
         validateTestObjectKey(objectKey);
-        String url = fileStorageService.generatePresignedUrl(objectKey, Duration.ofMinutes(10));
+        String url = fileStorageServiceS3.generatePresignedUrl(objectKey, Duration.ofMinutes(10));
 
         return ResponseEntity.ok(Map.of("objectKey", objectKey, "url", url));
     }
@@ -48,7 +48,7 @@ public class S3TestController {
     public ResponseEntity<MessageResource> delete(@RequestParam String objectKey){
 
         validateTestObjectKey(objectKey);
-        fileStorageService.delete(objectKey);
+        fileStorageServiceS3.delete(objectKey);
 
         return ResponseEntity.ok(new MessageResource("File deleted successfully"));
     }
