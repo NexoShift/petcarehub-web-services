@@ -1,6 +1,8 @@
 package com.nexoshift.petcarehub.profiles.interfaces.rest.controllers;
 
 import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.storage.ProfileImageStorageService;
+import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.IamExternalService;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAllowedException;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.ClinicNotFoundException;
 import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Clinic;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdateClinicImageCommand;
@@ -38,6 +40,7 @@ public class ClinicController {
     private final ClinicCommandService clinicCommandService;
     private final ClinicQueryService clinicQueryService;
     private final ProfileImageStorageService profileImageStorageService;
+    private final IamExternalService iamExternalService;
 
     /**
      * Constructs the clinic controller.
@@ -49,11 +52,13 @@ public class ClinicController {
     public ClinicController(
             ClinicCommandService clinicCommandService,
             ClinicQueryService clinicQueryService,
-            ProfileImageStorageService profileImageStorageService) {
+            ProfileImageStorageService profileImageStorageService,
+            IamExternalService iamExternalService) {
 
         this.clinicCommandService = clinicCommandService;
         this.clinicQueryService = clinicQueryService;
         this.profileImageStorageService = profileImageStorageService;
+        this.iamExternalService = iamExternalService;
     }
 
     /**
@@ -71,6 +76,14 @@ public class ClinicController {
     })
     public ResponseEntity<ClinicResource> createClinic(
             @ModelAttribute CreateClinicResource resource) {
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+        var hasAdminRole = iamExternalService.userHasRole(authenticatedUserId, "ROLE_CLINIC_ADMIN");
+        var belongsToAccount = resource.accountId().equals(
+                iamExternalService.fetchAccountIdByUserId(authenticatedUserId));
+        if (!hasAdminRole || !belongsToAccount) {
+            throw new ProfileOperationNotAllowedException("You cannot create a profile for this clinic");
+        }
 
         var profileImageKey = profileImageStorageService.upload(
                 resource.image(), IMAGE_FOLDER
