@@ -46,8 +46,12 @@ public class VeterinarianCommandServiceImpl implements VeterinarianCommandServic
         this.iamExternalService = iamExternalService;
     }
 
+
     /**
-     * Creates a veterinarian profile associated with an existing clinic.
+     * Creates a veterinarian profile within an existing clinic.
+     *
+     * Only an administrator belonging to the clinic account
+     * can register the professional profile of a veterinarian.
      *
      * @param command the create veterinarian command
      * @return the created veterinarian identifier
@@ -61,31 +65,52 @@ public class VeterinarianCommandServiceImpl implements VeterinarianCommandServic
 
         var clinicAccountId = clinic.getAccountId().accountId();
 
+        // Identify the authenticated administrator.
         var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
 
-        if (!authenticatedUserId.equals(command.userId())) {
+        // Verify that the requester is an active clinic administrator.
+        if (!iamExternalService.existsActiveUser(authenticatedUserId)
+                || !iamExternalService.userHasRole(
+                authenticatedUserId, "ROLE_CLINIC_ADMIN")) {
             throw new ProfileOperationNotAllowedException(
-                    "You can only create your own veterinarian profile");
+                    "Only an active clinic administrator can create veterinarian profiles");
         }
 
+        // Prevent administrators from managing profiles in other clinic accounts.
+        var administratorAccountId =
+                iamExternalService.fetchAccountIdByUserId(authenticatedUserId);
+
+        if (!administratorAccountId.equals(clinicAccountId)) {
+            throw new ProfileOperationNotAllowedException(
+                    "Administrator does not belong to this clinic account");
+        }
+
+        // Verify that the target user exists and is active.
         if (!iamExternalService.existsActiveUser(command.userId())) {
-            throw new ProfileOperationNotAllowedException("User does not exist or is inactive");
+            throw new ProfileOperationNotAllowedException(
+                    "User does not exist or is inactive");
         }
 
+        // Verify that the target user has the veterinarian role.
         if (!iamExternalService.userHasRole(
                 command.userId(), "ROLE_VETERINARIAN")) {
             throw new ProfileOperationNotAllowedException(
                     "User does not have the veterinarian role");
         }
 
-        var veterinarianAccountId = iamExternalService.fetchAccountIdByUserId(
-                command.userId());
+        // Verify that the target veterinarian belongs to this clinic account.
+        var veterinarianAccountId =
+                iamExternalService.fetchAccountIdByUserId(command.userId());
 
         if (!veterinarianAccountId.equals(clinicAccountId)
-                || !"CLINIC".equals(iamExternalService.fetchAccountTypeByAccountId(veterinarianAccountId))) {
-            throw new ProfileOperationNotAllowedException("Veterinarian does not belong to this clinic account");
+                || !"CLINIC".equals(
+                iamExternalService.fetchAccountTypeByAccountId(
+                        veterinarianAccountId))) {
+            throw new ProfileOperationNotAllowedException(
+                    "Veterinarian does not belong to this clinic account");
         }
 
+        // Prevent duplicate professional profiles.
         var userId = new UserId(command.userId());
 
         if (veterinarianRepository.existsByUserId(userId)) {
