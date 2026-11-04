@@ -5,6 +5,7 @@ import com.nexoshift.petcarehub.profiles.domain.exceptions.VeterinarianNotFoundE
 import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Veterinarian;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdateVeterinarianImageCommand;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetVeterinarianByIdQuery;
+import com.nexoshift.petcarehub.profiles.domain.model.queries.GetVeterinarianByUserIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.services.VeterinarianCommandService;
 import com.nexoshift.petcarehub.profiles.domain.services.VeterinarianQueryService;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.resources.CreateVeterinarianResource;
@@ -138,6 +139,38 @@ public class VeterinarianController {
         var profileImageUrl = profileImageStorageService.generatePresignedUrl(
                 entity.getProfileImageKey()
         );
+
+        var veterinarianResource = VeterinarianResourceFromEntityAssembler
+                .toResourceFromEntity(entity, profileImageUrl);
+
+        return ResponseEntity.ok(veterinarianResource);
+    }
+
+    /**
+     * Retrieves a veterinarian by its IAM user identifier.
+     *
+     * @param userId the IAM user identifier
+     * @return the veterinarian resource
+     */
+    @GetMapping(params = "userId")
+    @Operation(
+            summary = "Get veterinarian by user ID",
+            description = "Get veterinarian by IAM user ID"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Veterinarian found"),
+            @ApiResponse(responseCode = "404", description = "Veterinarian not found")
+    })
+    public ResponseEntity<VeterinarianResource> getVeterinarianByUserId(
+            @RequestParam Long userId) {
+
+        var veterinarian = veterinarianQueryService.handle(new GetVeterinarianByUserIdQuery(userId));
+
+        if (veterinarian.isEmpty()) return ResponseEntity.notFound().build();
+
+        var entity = veterinarian.get();
+        var profileImageUrl = profileImageStorageService.generatePresignedUrl(
+                entity.getProfileImageKey());
 
         var veterinarianResource = VeterinarianResourceFromEntityAssembler
                 .toResourceFromEntity(entity, profileImageUrl);
