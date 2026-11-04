@@ -7,6 +7,7 @@ import com.nexoshift.petcarehub.profiles.domain.exceptions.PetOwnerNotFoundExcep
 import com.nexoshift.petcarehub.profiles.domain.model.aggregates.PetOwner;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdatePetOwnerImageCommand;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetPetOwnerByIdQuery;
+import com.nexoshift.petcarehub.profiles.domain.model.queries.GetPetOwnerByUserIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.services.PetOwnerCommandService;
 import com.nexoshift.petcarehub.profiles.domain.services.PetOwnerQueryService;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.resources.CreatePetOwnerResource;
@@ -145,6 +146,41 @@ public class PetOwnerController {
         var profileImageUrl = profileImageStorageService.generatePresignedUrl(entity.getProfileImageKey());
 
         var petOwnerResource = PetOwnerResourceFromEntityAssembler.toResourceFromEntity(petOwner.get(), profileImageUrl);
+
+        return ResponseEntity.ok(petOwnerResource);
+    }
+
+    /**
+     * Retrieves a pet owner by its IAM user identifier.
+     *
+     * @param userId the IAM user identifier
+     * @return the pet owner resource
+     */
+    @GetMapping(params = "userId")
+    @Operation(
+            summary = "Get pet owner by user ID",
+            description = "Get pet owner by IAM user ID"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Pet owner found"),
+            @ApiResponse(responseCode = "404", description = "Pet owner not found")
+    })
+    public ResponseEntity<PetOwnerResource> getPetOwnerByUserId(
+            @RequestParam Long userId) {
+
+        var petOwner = petOwnerQueryService.handle(
+                new GetPetOwnerByUserIdQuery(userId)
+        );
+
+        if (petOwner.isEmpty()) return ResponseEntity.notFound().build();
+
+        var entity = petOwner.get();
+        var profileImageUrl = profileImageStorageService.generatePresignedUrl(
+                entity.getProfileImageKey()
+        );
+
+        var petOwnerResource = PetOwnerResourceFromEntityAssembler
+                .toResourceFromEntity(entity, profileImageUrl);
 
         return ResponseEntity.ok(petOwnerResource);
     }

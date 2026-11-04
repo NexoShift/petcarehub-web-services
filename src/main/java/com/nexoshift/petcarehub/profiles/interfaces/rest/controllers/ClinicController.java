@@ -6,6 +6,7 @@ import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAl
 import com.nexoshift.petcarehub.profiles.domain.exceptions.ClinicNotFoundException;
 import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Clinic;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdateClinicImageCommand;
+import com.nexoshift.petcarehub.profiles.domain.model.queries.GetClinicByAccountIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetClinicByIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.services.ClinicCommandService;
 import com.nexoshift.petcarehub.profiles.domain.services.ClinicQueryService;
@@ -153,6 +154,41 @@ public class ClinicController {
 
         var clinicResource = ClinicResourceFromEntityAssembler
                 .toResourceFromEntity(clinicEntity, profileImageUrl);
+
+        return ResponseEntity.ok(clinicResource);
+    }
+
+    /**
+     * Retrieves a clinic by its IAM account identifier.
+     *
+     * @param accountId the IAM account identifier
+     * @return the clinic resource
+     */
+    @GetMapping(params = "accountId")
+    @Operation(
+            summary = "Get clinic by account ID",
+            description = "Get clinic by IAM account ID"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Clinic found"),
+            @ApiResponse(responseCode = "404", description = "Clinic not found")
+    })
+    public ResponseEntity<ClinicResource> getClinicByAccountId(
+            @RequestParam Long accountId) {
+
+        var clinic = clinicQueryService.handle(
+                new GetClinicByAccountIdQuery(accountId)
+        );
+
+        if (clinic.isEmpty()) return ResponseEntity.notFound().build();
+
+        var entity = clinic.get();
+        var profileImageUrl = profileImageStorageService.generatePresignedUrl(
+                entity.getProfileImageKey()
+        );
+
+        var clinicResource = ClinicResourceFromEntityAssembler
+                .toResourceFromEntity(entity, profileImageUrl);
 
         return ResponseEntity.ok(clinicResource);
     }

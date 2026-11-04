@@ -61,6 +61,13 @@ public class VeterinarianCommandServiceImpl implements VeterinarianCommandServic
 
         var clinicAccountId = clinic.getAccountId().accountId();
 
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        if (!authenticatedUserId.equals(command.userId())) {
+            throw new ProfileOperationNotAllowedException(
+                    "You can only create your own veterinarian profile");
+        }
+
         if (!iamExternalService.existsActiveUser(command.userId())) {
             throw new ProfileOperationNotAllowedException("User does not exist or is inactive");
         }
