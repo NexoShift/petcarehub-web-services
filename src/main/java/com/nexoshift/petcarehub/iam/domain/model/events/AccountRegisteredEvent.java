@@ -1,10 +1,9 @@
 package com.nexoshift.petcarehub.iam.domain.model.events;
 
 import com.nexoshift.petcarehub.iam.domain.model.valueobjects.AccountType;
-import com.nexoshift.petcarehub.iam.domain.model.valueobjects.HolderProfile;
-
 import java.time.Instant;
 
-public record AccountRegisteredEvent(Long accountId, AccountType accountType,
-                                     Long holderUserId, String email, HolderProfile profile, Instant occurredAt) {
+/** Internal domain event: a new account and its holder were registered. */
+public record AccountRegisteredEvent(
+        Long accountId, AccountType accountType, Long holderUserId, Instant occurredAt) {
 }

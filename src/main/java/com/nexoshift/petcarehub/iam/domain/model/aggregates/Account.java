@@ -47,7 +47,7 @@ public class Account extends AuditableAbstractAggregateRoot<Account> {
 
   /** Creates an active account together with its holder user. */
   public static Account registerWithHolder(
-      AccountType type, EmailAddress email, PasswordHash passwordHash, Set<Role> holderRoles) {
+          AccountType type, EmailAddress email, PasswordHash passwordHash, Set<Role> holderRoles) {
     if (type == null) {
       throw new IllegalArgumentException("Account type is required");
     }
@@ -57,11 +57,10 @@ public class Account extends AuditableAbstractAggregateRoot<Account> {
   }
 
   /** Registers the creation events. Call it after the first save, when ids exist. */
-  public void notifyRegistered(HolderProfile profile) {
+  public void notifyRegistered() {
     var holder = holder();
     var now = Instant.now();
-    registerEvent(new AccountRegisteredEvent(getId(), type, holder.getId(),
-            holder.getEmailAddress(), profile, now));
+    registerEvent(new AccountRegisteredEvent(getId(), type, holder.getId(), now));
     registerEvent(new UserRegisteredEvent(holder.getId(), getId(), holder.getEmailAddress(), now));
   }
   /** Adds a member user (for example, a veterinarian registered by a clinic). */
@@ -73,6 +72,8 @@ public class Account extends AuditableAbstractAggregateRoot<Account> {
       throw new IllegalStateException("Members can only be added to active accounts");
     }
     var member = new User(this, email, passwordHash, AccessRole.MEMBER, memberRoles);
+    // Members start with a temporary password created by the clinic admin
+    member.requirePasswordChange();
     users.add(member);
     return member;
   }
@@ -80,7 +81,7 @@ public class Account extends AuditableAbstractAggregateRoot<Account> {
   /** Registers the creation event of a member. Call it after saving, when the id exists. */
   public void notifyMemberRegistered(User member) {
     registerEvent(new UserRegisteredEvent(
-        member.getId(), getId(), member.getEmailAddress(), Instant.now()));
+            member.getId(), getId(), member.getEmailAddress(), Instant.now()));
   }
 
 
@@ -126,9 +127,9 @@ public class Account extends AuditableAbstractAggregateRoot<Account> {
 
   public User holder() {
     return users.stream()
-        .filter(User::isHolder)
-        .findFirst()
-        .orElseThrow(() -> new IllegalStateException("Account has no holder"));
+            .filter(User::isHolder)
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("Account has no holder"));
   }
 
   public Optional<User> findUserByEmail(EmailAddress email) {
@@ -137,9 +138,9 @@ public class Account extends AuditableAbstractAggregateRoot<Account> {
 
   private User findUser(Long userId) {
     return users.stream()
-        .filter(user -> user.getId().equals(userId))
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("User does not belong to this account"));
+            .filter(user -> user.getId().equals(userId))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("User does not belong to this account"));
   }
 
   public AccountType getType() {
