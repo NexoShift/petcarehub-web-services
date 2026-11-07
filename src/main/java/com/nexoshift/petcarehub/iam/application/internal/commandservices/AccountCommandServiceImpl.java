@@ -41,8 +41,8 @@ public class AccountCommandServiceImpl implements AccountCommandService {
   private final TokenService tokenService;
 
   public AccountCommandServiceImpl(AccountRepository accountRepository,
-      UserRepository userRepository, RoleRepository roleRepository,
-      HashingService hashingService, TokenService tokenService) {
+                                   UserRepository userRepository, RoleRepository roleRepository,
+                                   HashingService hashingService, TokenService tokenService) {
     this.accountRepository = accountRepository;
     this.userRepository = userRepository;
     this.roleRepository = roleRepository;
@@ -57,9 +57,9 @@ public class AccountCommandServiceImpl implements AccountCommandService {
     ensureEmailIsAvailable(email);
     var passwordHash = new PasswordHash(hashingService.encode(command.password()));
     var account = Account.registerWithHolder(
-        command.accountType(), email, passwordHash, resolveRoles(command.accountType().holderRoles()));
+            command.accountType(), email, passwordHash, resolveRoles(command.accountType().holderRoles()));
     account = accountRepository.save(account);
-    account.notifyRegistered(command.profile());
+    account.notifyRegistered();
     account = accountRepository.save(account);
     return Optional.of(account.holder());
   }
@@ -68,7 +68,7 @@ public class AccountCommandServiceImpl implements AccountCommandService {
   @Transactional(readOnly = true)
   public Optional<AuthenticatedSession> handle(SignInCommand command) {
     var user = userRepository.findByEmailAddress(command.email().trim().toLowerCase())
-        .orElseThrow(InvalidCredentialsException::new);
+            .orElseThrow(InvalidCredentialsException::new);
     if (!hashingService.matches(command.password(), user.getPasswordHash().value())) {
       throw new InvalidCredentialsException();
     }
@@ -83,7 +83,7 @@ public class AccountCommandServiceImpl implements AccountCommandService {
   @Transactional
   public Optional<User> handle(CreateMemberUserCommand command) {
     var account = accountRepository.findById(command.accountId())
-        .orElseThrow(() -> new AccountNotFoundException(command.accountId()));
+            .orElseThrow(() -> new AccountNotFoundException(command.accountId()));
     var email = new EmailAddress(command.email());
     ensureEmailIsAvailable(email);
     var passwordHash = new PasswordHash(hashingService.encode(command.password()));
@@ -116,15 +116,15 @@ public class AccountCommandServiceImpl implements AccountCommandService {
   /** Returns the account of the target user if the requester is the holder of that account. */
   private Account accountManagedBy(Long requesterUserId, Long targetUserId) {
     var requester = userRepository.findById(requesterUserId)
-        .orElseThrow(() -> new UserNotFoundException(requesterUserId));
+            .orElseThrow(() -> new UserNotFoundException(requesterUserId));
     var target = userRepository.findById(targetUserId)
-        .orElseThrow(() -> new UserNotFoundException(targetUserId));
+            .orElseThrow(() -> new UserNotFoundException(targetUserId));
     if (!requester.isHolder() || !target.belongsTo(requester.getAccountId())) {
       throw new AccountOperationNotAllowedException(
-          "Only the holder of the account can manage its users");
+              "Only the holder of the account can manage its users");
     }
     return accountRepository.findById(requester.getAccountId())
-        .orElseThrow(() -> new AccountNotFoundException(requester.getAccountId()));
+            .orElseThrow(() -> new AccountNotFoundException(requester.getAccountId()));
   }
 
   private void ensureEmailIsAvailable(EmailAddress email) {
@@ -135,8 +135,8 @@ public class AccountCommandServiceImpl implements AccountCommandService {
 
   private Set<Role> resolveRoles(Set<Roles> roleNames) {
     return roleNames.stream()
-        .map(name -> roleRepository.findByName(name)
-            .orElseThrow(() -> new RoleNotFoundException(name.name())))
-        .collect(Collectors.toSet());
+            .map(name -> roleRepository.findByName(name)
+                    .orElseThrow(() -> new RoleNotFoundException(name.name())))
+            .collect(Collectors.toSet());
   }
 }
