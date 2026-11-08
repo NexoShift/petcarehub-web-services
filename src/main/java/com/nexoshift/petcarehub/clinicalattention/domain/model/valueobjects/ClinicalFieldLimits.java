@@ -24,6 +24,18 @@ public final class ClinicalFieldLimits {
   public static final int MAX_DIFFERENTIAL_DIAGNOSES = 10;
   public static final int RATIONALE = 2000;
 
+  public static final int TREATMENT_DESCRIPTION = 500;
+  public static final int TREATMENT_INSTRUCTION = 500;
+
+  public static final int PRESCRIPTION_INSTRUCTION = 500;
+
+  public static final int MEDICATION_NAME = 50;
+  public static final int MEDICATION_DOSAGE = 50;
+  public static final int MEDICATION_FREQUENCY = 50;
+  public static final int MEDICATION_DURATION = 150;
+  public static final int MEDICATION_INDICATIONS = 500;
+
+
   public static final int CANCELLATION_REASON = 500;
 
   private ClinicalFieldLimits() {
