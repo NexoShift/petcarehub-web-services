@@ -2,6 +2,8 @@ package com.nexoshift.petcarehub.iam.infrastructure.persistence.jpa.repositories
 
 import com.nexoshift.petcarehub.iam.domain.model.entities.User;
 import com.nexoshift.petcarehub.iam.domain.repositories.UserRepository;
+
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -19,4 +21,10 @@ public interface UserJpaRepository extends JpaRepository<User, Long>, UserReposi
   @Override
   @Query("select count(user) > 0 from User user where user.email.address = :address")
   boolean existsByEmailAddress(@Param("address") String address);
+
+
+  @Override
+  @Query("SELECT u FROM User u WHERE u.account.id = :accountId ORDER BY u.id")
+  List<User> findByAccountId(@Param("accountId") Long accountId);
+
 }
