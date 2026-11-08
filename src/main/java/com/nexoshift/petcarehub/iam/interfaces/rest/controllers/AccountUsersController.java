@@ -4,6 +4,7 @@ import com.nexoshift.petcarehub.iam.domain.exceptions.AccountOperationNotAllowed
 import com.nexoshift.petcarehub.iam.domain.exceptions.UserNotFoundException;
 import com.nexoshift.petcarehub.iam.domain.model.commands.CreateMemberUserCommand;
 import com.nexoshift.petcarehub.iam.domain.model.queries.GetUserByIdQuery;
+import com.nexoshift.petcarehub.iam.domain.model.queries.GetUsersByAccountIdQuery;
 import com.nexoshift.petcarehub.iam.domain.services.AccountCommandService;
 import com.nexoshift.petcarehub.iam.domain.services.AccountQueryService;
 import com.nexoshift.petcarehub.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
@@ -19,6 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * REST controller for managing users within an account.
@@ -84,4 +87,47 @@ public class AccountUsersController {
                 )
                 .orElseGet(() -> ResponseEntity.badRequest().build());
     }
+
+
+    /**
+     * Retrieves users belonging to a clinic account.
+     *
+     * Only the active account holder may access the directory.
+     *
+     * @param accountId the clinic IAM account identifier
+     * @param currentUser the authenticated user
+     * @return the account users
+     */
+    @GetMapping
+    @PreAuthorize("hasRole('CLINIC_ADMIN')")
+    @Operation(summary = "Get users belonging to a clinic account")
+    public ResponseEntity<List<UserResource>> getAccountUsers(
+            @PathVariable Long accountId,
+            @AuthenticationPrincipal UserDetailsImpl currentUser) {
+
+        var requester = accountQueryService.handle(
+                new GetUserByIdQuery(currentUser.getId())
+        ).orElseThrow(
+                () -> new UserNotFoundException(currentUser.getId())
+        );
+
+        if (!requester.isActive()
+                || !requester.isHolder()
+                || !requester.belongsTo(accountId)) {
+            throw new AccountOperationNotAllowedException(
+                    "Only the active account holder can view account users"
+            );
+        }
+
+        var users = accountQueryService.handle(
+                new GetUsersByAccountIdQuery(accountId)
+        );
+
+        var resources = users.stream()
+                .map(UserResourceFromEntityAssembler::toResourceFromEntity)
+                .toList();
+
+        return ResponseEntity.ok(resources);
+    }
+
 }
