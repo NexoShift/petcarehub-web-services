@@ -4,9 +4,12 @@ import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.ClinicId;
 import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.PetCode;
 import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.PetId;
 import com.nexoshift.petcarehub.profiles.infrastructure.persistence.jpa.repositories.*;
+import com.nexoshift.petcarehub.profiles.interfaces.acl.PetProfileSnapshot;
 import com.nexoshift.petcarehub.profiles.interfaces.acl.ProfileContextFacade;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 /**
  * Implementation of the profile context facade.
@@ -51,6 +54,24 @@ public class ProfileContextFacadeImpl implements ProfileContextFacade {
 
         return petId != null && petId > 0
                 && petRepository.existsById(petId);
+    }
+
+    @Override
+    public Optional<PetProfileSnapshot> fetchPetProfileSnapshot(Long petId) {
+
+        if (petId == null || petId <= 0) {
+            return Optional.empty();
+        }
+
+        return petRepository.findById(petId)
+                .map(pet -> new PetProfileSnapshot(
+                        pet.getId(),
+                        pet.getName(),
+                        pet.getSpecies() == null ? null : pet.getSpecies().name(),
+                        pet.getBreed(),
+                        pet.getSex() == null ? null : pet.getSex().name(),
+                        pet.getBirthDate()
+                ));
     }
 
     @Override

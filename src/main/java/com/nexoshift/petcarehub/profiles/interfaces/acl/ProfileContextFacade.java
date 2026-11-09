@@ -1,5 +1,7 @@
 package com.nexoshift.petcarehub.profiles.interfaces.acl;
 
+import java.util.Optional;
+
 /**
  * Facade exposing profile information to other bounded contexts.
  */
@@ -12,6 +14,14 @@ public interface ProfileContextFacade {
      * @return true if the pet exists
      */
     boolean existsPet(Long petId);
+
+    /**
+     * Retrieves the basic profile of a pet (name, species, breed, sex and birth date).
+     *
+     * @param petId the pet identifier
+     * @return the pet snapshot, or empty if the pet does not exist
+     */
+    Optional<PetProfileSnapshot> fetchPetProfileSnapshot(Long petId);
 
     /**
      * Retrieves the owner identifier of a pet.
