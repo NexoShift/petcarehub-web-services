@@ -1,8 +1,13 @@
 package com.nexoshift.petcarehub.profiles.interfaces.rest.controllers;
 
 import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.storage.ProfileImageStorageService;
+import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.IamExternalService;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAllowedException;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.PetOwnerNotFoundException;
+import com.nexoshift.petcarehub.profiles.domain.model.aggregates.PetOwner;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdatePetOwnerImageCommand;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetPetOwnerByIdQuery;
+import com.nexoshift.petcarehub.profiles.domain.model.queries.GetPetOwnerByUserIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.services.PetOwnerCommandService;
 import com.nexoshift.petcarehub.profiles.domain.services.PetOwnerQueryService;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.resources.CreatePetOwnerResource;
@@ -26,6 +31,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -45,6 +51,7 @@ public class PetOwnerController {
     private final PetOwnerCommandService petOwnerCommandService;
     private final PetOwnerQueryService petOwnerQueryService;
     private final ProfileImageStorageService profileImageStorageService;
+    private final IamExternalService iamExternalService;
 
     /**
      * Constructs the pet owner controller.
@@ -55,11 +62,13 @@ public class PetOwnerController {
     public PetOwnerController(
             PetOwnerCommandService petOwnerCommandService,
             PetOwnerQueryService petOwnerQueryService,
-            ProfileImageStorageService profileImageStorageService) {
+            ProfileImageStorageService profileImageStorageService,
+            IamExternalService iamExternalService) {
 
         this.petOwnerCommandService = petOwnerCommandService;
         this.petOwnerQueryService = petOwnerQueryService;
-        this.profileImageStorageService= profileImageStorageService;
+        this.profileImageStorageService = profileImageStorageService;
+        this.iamExternalService = iamExternalService;
     }
 
 
@@ -77,6 +86,11 @@ public class PetOwnerController {
             @ApiResponse(responseCode = "409", description = "Pet owner profile already exists")
     })
     public ResponseEntity<PetOwnerResource> createPetOwner(@ModelAttribute CreatePetOwnerResource resource) {
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+        if (!authenticatedUserId.equals(resource.userId())) {
+            throw new ProfileOperationNotAllowedException("You cannot create a profile for another user");
+        }
 
         var profileImageKey = profileImageStorageService.upload(resource.image(), IMAGE_FOLDER);
 
@@ -137,6 +151,41 @@ public class PetOwnerController {
     }
 
     /**
+     * Retrieves a pet owner by its IAM user identifier.
+     *
+     * @param userId the IAM user identifier
+     * @return the pet owner resource
+     */
+    @GetMapping(params = "userId")
+    @Operation(
+            summary = "Get pet owner by user ID",
+            description = "Get pet owner by IAM user ID"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Pet owner found"),
+            @ApiResponse(responseCode = "404", description = "Pet owner not found")
+    })
+    public ResponseEntity<PetOwnerResource> getPetOwnerByUserId(
+            @RequestParam Long userId) {
+
+        var petOwner = petOwnerQueryService.handle(
+                new GetPetOwnerByUserIdQuery(userId)
+        );
+
+        if (petOwner.isEmpty()) return ResponseEntity.notFound().build();
+
+        var entity = petOwner.get();
+        var profileImageUrl = profileImageStorageService.generatePresignedUrl(
+                entity.getProfileImageKey()
+        );
+
+        var petOwnerResource = PetOwnerResourceFromEntityAssembler
+                .toResourceFromEntity(entity, profileImageUrl);
+
+        return ResponseEntity.ok(petOwnerResource);
+    }
+
+    /**
      * Updates a pet owner's personal information.
      *
      * @param petOwnerId the pet owner profile identifier
@@ -182,10 +231,25 @@ public class PetOwnerController {
 
         if(newImageKey == null) return ResponseEntity.badRequest().build();
 
-        var command = new UpdatePetOwnerImageCommand(petOwnerId,newImageKey);
+        Optional<PetOwner> updatedPetOwner;
 
-        var updatedPetOwner = petOwnerCommandService.handle(command);
-        if(updatedPetOwner.isEmpty()) return ResponseEntity.notFound().build();
+        try {
+            var command = new UpdatePetOwnerImageCommand(petOwnerId, newImageKey);
+
+            updatedPetOwner = petOwnerCommandService.handle(command);
+
+            if (updatedPetOwner.isEmpty()) {
+                throw new PetOwnerNotFoundException(petOwnerId);
+            }
+
+        } catch (RuntimeException e) {
+            try {
+                profileImageStorageService.delete(newImageKey);
+            } catch (RuntimeException cleanupError) {
+                e.addSuppressed(cleanupError);
+            }
+            throw e;
+        }
 
         if(previousImageKey != null && !previousImageKey.equalsIgnoreCase(newImageKey)) {
             profileImageStorageService.delete(previousImageKey);

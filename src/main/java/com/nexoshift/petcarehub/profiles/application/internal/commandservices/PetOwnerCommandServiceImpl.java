@@ -1,7 +1,9 @@
 package com.nexoshift.petcarehub.profiles.application.internal.commandservices;
 
+import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.IamExternalService;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.PetOwnerNotFoundException;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileAlreadyExistsException;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAllowedException;
 import com.nexoshift.petcarehub.profiles.domain.model.aggregates.PetOwner;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.CreatePetOwnerCommand;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdatePetOwnerCommand;
@@ -24,14 +26,17 @@ import java.util.Optional;
 public class PetOwnerCommandServiceImpl implements PetOwnerCommandService {
 
     private final PetOwnerRepository petOwnerRepository;
+    private final IamExternalService iamExternalService;
 
     /**
      * Constructs a pet owner command service.
      *
      * @param petOwnerRepository the pet owner repository
+     * @param iamExternalService the IAM external service
      */
-    public PetOwnerCommandServiceImpl(PetOwnerRepository petOwnerRepository) {
+    public PetOwnerCommandServiceImpl(PetOwnerRepository petOwnerRepository, IamExternalService iamExternalService) {
         this.petOwnerRepository = petOwnerRepository;
+        this.iamExternalService = iamExternalService;
     }
 
     /**
@@ -42,6 +47,22 @@ public class PetOwnerCommandServiceImpl implements PetOwnerCommandService {
      */
     @Override
     public Long handle(CreatePetOwnerCommand command) {
+
+
+        if(!iamExternalService.existsActiveUser(command.userId())){
+            throw new ProfileOperationNotAllowedException("User does not exists or is inactive");
+        }
+
+        if(!iamExternalService.userHasRole(command.userId(), "ROLE_PET_OWNER")){
+            throw new ProfileOperationNotAllowedException("User does not have the pew owner role");
+        }
+
+        var accountId = iamExternalService.fetchAccountIdByUserId(command.userId());
+
+        if (!"PET_OWNER".equals(
+                iamExternalService.fetchAccountTypeByAccountId(accountId))) {
+            throw new ProfileOperationNotAllowedException("User does not belong to a pet owner account");
+        }
 
         var userId = new UserId(command.userId());
 
@@ -72,6 +93,13 @@ public class PetOwnerCommandServiceImpl implements PetOwnerCommandService {
             throw new PetOwnerNotFoundException(command.petOwnerId());
         }
 
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        if (!petOwner.get().getUserId().userId().equals(authenticatedUserId)) {
+            throw new ProfileOperationNotAllowedException(
+                    "You cannot update another user's profile");
+        }
+
         var entity = petOwner.get();
 
         entity.updateProfile(
@@ -98,6 +126,13 @@ public class PetOwnerCommandServiceImpl implements PetOwnerCommandService {
         var petOwner = petOwnerRepository.findById(command.petOwnerId())
                 .orElseThrow(() ->
                         new PetOwnerNotFoundException(command.petOwnerId()));
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        if (!petOwner.getUserId().userId().equals(authenticatedUserId)) {
+            throw new ProfileOperationNotAllowedException(
+                    "You cannot update another user's profile image");
+        }
 
         petOwner.updateProfileImage(command.profileImageKey());
 

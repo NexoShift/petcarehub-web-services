@@ -1,15 +1,20 @@
 package com.nexoshift.petcarehub.profiles.interfaces.rest.controllers;
 
 import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.storage.ProfileImageStorageService;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.PetNotFoundException;
+import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Pet;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdatePetImageCommand;
+import com.nexoshift.petcarehub.profiles.domain.model.queries.GetPetByCodeQuery;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetPetByIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.services.PetCommandService;
 import com.nexoshift.petcarehub.profiles.domain.services.PetQueryService;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.resources.CreatePetResource;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.resources.PetResource;
+import com.nexoshift.petcarehub.profiles.interfaces.rest.resources.PetSearchResource;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.resources.UpdatePetResource;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.transform.CreatePetCommandFromResourceAssembler;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.transform.PetResourceFromEntityAssembler;
+import com.nexoshift.petcarehub.profiles.interfaces.rest.transform.PetSearchResourceFromEntityAssembler;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.transform.UpdatePetCommandFromResourceAssembler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -20,6 +25,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Optional;
 
 /**
  * REST controller for managing pet profiles.
@@ -234,20 +241,30 @@ public class PetController {
             return ResponseEntity.badRequest().build();
         }
 
-        var newImageKey = profileImageStorageService.upload(
-                image,
-                IMAGE_FOLDER
-        );
+        var newImageKey = profileImageStorageService.upload(image, IMAGE_FOLDER);
 
-        var updatePetImageCommand = new UpdatePetImageCommand(
-                petId,
-                newImageKey
-        );
+        if (newImageKey == null) {
+            return ResponseEntity.badRequest().build();
+        }
 
-        var updatedPet = petCommandService.handle(updatePetImageCommand);
+        Optional<Pet> updatedPet;
 
-        if (updatedPet.isEmpty()) {
-            return ResponseEntity.notFound().build();
+        try {
+            var command = new UpdatePetImageCommand(petId, newImageKey);
+
+            updatedPet = petCommandService.handle(command);
+
+            if (updatedPet.isEmpty()) {
+                throw new PetNotFoundException(petId);
+            }
+
+        } catch (RuntimeException e) {
+            try {
+                profileImageStorageService.delete(newImageKey);
+            } catch (RuntimeException cleanupError) {
+                e.addSuppressed(cleanupError);
+            }
+            throw e;
         }
 
         if (previousImageKey != null && !previousImageKey.equals(newImageKey)) {
@@ -262,6 +279,40 @@ public class PetController {
 
         var petResource = PetResourceFromEntityAssembler
                 .toResourceFromEntity(petEntity, profileImageUrl);
+
+        return ResponseEntity.ok(petResource);
+    }
+
+    /**
+     * Retrieves a pet by its unique identification code.
+     *
+     * @param petCode the pet identification code
+     * @return the pet search resource
+     */
+    @GetMapping(params = "petCode")
+    @Operation(
+            summary = "Find pet by code",
+            description = "Retrieve basic pet information using its unique identification code"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Pet found"),
+            @ApiResponse(responseCode = "400", description = "Invalid pet code"),
+            @ApiResponse(responseCode = "403", description = "Access denied"),
+            @ApiResponse(responseCode = "404", description = "Pet not found")
+    })
+    public ResponseEntity<PetSearchResource> getPetByCode(
+            @RequestParam String petCode) {
+
+        var query = new GetPetByCodeQuery(petCode);
+
+        var pet = petQueryService.handle(query);
+
+        if (pet.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        var petResource = PetSearchResourceFromEntityAssembler
+                .toResourceFromEntity(pet.get());
 
         return ResponseEntity.ok(petResource);
     }

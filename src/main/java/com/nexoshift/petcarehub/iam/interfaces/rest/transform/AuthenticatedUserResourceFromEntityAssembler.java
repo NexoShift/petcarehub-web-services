@@ -13,6 +13,7 @@ public final class AuthenticatedUserResourceFromEntityAssembler {
     var user = session.user();
     var roles = user.getRoles().stream().map(Role::getStringName).sorted().toList();
     return new AuthenticatedUserResource(user.getId(), user.getAccountId(),
-        user.getAccount().getType().name(), user.getEmailAddress(), roles, session.token());
+            user.getAccount().getType().name(), user.getEmailAddress(), roles, user.mustChangePassword(),
+            session.token());
   }
 }

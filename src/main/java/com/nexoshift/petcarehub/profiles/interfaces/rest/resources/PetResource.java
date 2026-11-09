@@ -20,6 +20,7 @@ import java.time.LocalDate;
 public record PetResource(
         Long id,
         Long ownerId,
+        String petCode,
         String name,
         Species species,
         String breed,

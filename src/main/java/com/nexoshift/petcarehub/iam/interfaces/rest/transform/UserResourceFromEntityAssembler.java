@@ -12,6 +12,7 @@ public final class UserResourceFromEntityAssembler {
   public static UserResource toResourceFromEntity(User user) {
     var roles = user.getRoles().stream().map(Role::getStringName).sorted().toList();
     return new UserResource(user.getId(), user.getAccountId(), user.getAccount().getType().name(),
-        user.getEmailAddress(), user.getAccessRole().name(), user.getStatus().name(), roles);
+            user.getEmailAddress(), user.getAccessRole().name(), user.getStatus().name(), roles,
+            user.mustChangePassword());
   }
 }

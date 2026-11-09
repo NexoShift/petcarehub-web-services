@@ -1,7 +1,9 @@
 package com.nexoshift.petcarehub.profiles.application.internal.commandservices;
 
+import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.IamExternalService;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.PetNotFoundException;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.PetOwnerNotFoundException;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAllowedException;
 import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Pet;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.CreatePetCommand;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdatePetCommand;
@@ -25,19 +27,23 @@ public class PetCommandServiceImpl implements PetCommandService {
 
     private final PetRepository petRepository;
     private final PetOwnerRepository petOwnerRepository;
+    private final IamExternalService iamExternalService;
 
     /**
      * Constructs a pet command service.
      *
      * @param petRepository the pet repository
      * @param petOwnerRepository the pet owner repository
+     * @param iamExternalService the Iam External service
      */
     public PetCommandServiceImpl(
             PetRepository petRepository,
-            PetOwnerRepository petOwnerRepository) {
+            PetOwnerRepository petOwnerRepository,
+            IamExternalService iamExternalService) {
 
         this.petRepository = petRepository;
         this.petOwnerRepository = petOwnerRepository;
+        this.iamExternalService = iamExternalService;
     }
 
     /**
@@ -49,8 +55,15 @@ public class PetCommandServiceImpl implements PetCommandService {
     @Override
     public Long handle(CreatePetCommand command) {
 
-        if (!petOwnerRepository.existsById(command.ownerId())) {
-            throw new PetOwnerNotFoundException(command.ownerId());
+        var petOwner = petOwnerRepository.findById(command.ownerId())
+                .orElseThrow(() ->
+                        new PetOwnerNotFoundException(command.ownerId()));
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        if (!petOwner.getUserId().userId().equals(authenticatedUserId)) {
+            throw new ProfileOperationNotAllowedException(
+                    "You cannot register a pet for another owner");
         }
 
         var pet = new Pet(command);
@@ -72,6 +85,16 @@ public class PetCommandServiceImpl implements PetCommandService {
         var pet = petRepository.findById(command.petId())
                 .orElseThrow(() ->
                         new PetNotFoundException(command.petId()));
+
+        var petOwner = petOwnerRepository.findById(pet.getOwnerId().ownerId())
+                .orElseThrow(() -> new PetOwnerNotFoundException(pet.getOwnerId().ownerId()));
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        if (!petOwner.getUserId().userId().equals(authenticatedUserId)) {
+            throw new ProfileOperationNotAllowedException(
+                    "You cannot update another owner's pet");
+        }
 
         pet.updateProfile(
                 command.name(),
@@ -96,6 +119,19 @@ public class PetCommandServiceImpl implements PetCommandService {
         var pet = petRepository.findById(command.petId())
                 .orElseThrow(() ->
                         new PetNotFoundException(command.petId()));
+
+        var petOwner = petOwnerRepository.findById(
+                        pet.getOwnerId().ownerId())
+                .orElseThrow(() ->
+                        new PetOwnerNotFoundException(
+                                pet.getOwnerId().ownerId()));
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        if (!petOwner.getUserId().userId().equals(authenticatedUserId)) {
+            throw new ProfileOperationNotAllowedException(
+                    "You cannot update another owner's pet image");
+        }
 
         pet.updateProfileImage(command.profileImageKey());
 

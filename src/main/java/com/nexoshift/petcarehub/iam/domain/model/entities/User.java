@@ -19,6 +19,7 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import java.util.HashSet;
+import org.hibernate.annotations.ColumnDefault;
 import java.util.Set;
 
 /** Authenticable identity. It belongs to the Account aggregate and is changed through it. */
@@ -27,12 +28,12 @@ public class User extends AuditableModel {
 
   @Embedded
   @AttributeOverride(name = "address",
-      column = @Column(name = "email", nullable = false, unique = true, length = 120))
+          column = @Column(name = "email", nullable = false, unique = true, length = 120))
   private EmailAddress email;
 
   @Embedded
   @AttributeOverride(name = "value",
-      column = @Column(name = "password_hash", nullable = false, length = 120))
+          column = @Column(name = "password_hash", nullable = false, length = 120))
   private PasswordHash passwordHash;
 
   @Enumerated(EnumType.STRING)
@@ -45,19 +46,24 @@ public class User extends AuditableModel {
 
   @ManyToMany(fetch = FetchType.EAGER)
   @JoinTable(name = "user_roles",
-      joinColumns = @JoinColumn(name = "user_id"),
-      inverseJoinColumns = @JoinColumn(name = "role_id"))
+          joinColumns = @JoinColumn(name = "user_id"),
+          inverseJoinColumns = @JoinColumn(name = "role_id"))
   private Set<Role> roles = new HashSet<>();
 
   @ManyToOne(fetch = FetchType.EAGER, optional = false)
   @JoinColumn(name = "account_id", nullable = false)
   private Account account;
 
+  /** True while the user still has the temporary password a clinic admin gave it. */
+  @Column(name = "must_change_password", nullable = false)
+  @ColumnDefault("false")
+  private boolean mustChangePassword = false;
+
   protected User() {
   }
 
   public User(Account account, EmailAddress email, PasswordHash passwordHash,
-      AccessRole accessRole, Set<Role> roles) {
+              AccessRole accessRole, Set<Role> roles) {
     if (roles == null || roles.isEmpty()) {
       throw new IllegalArgumentException("A user needs at least one role");
     }
@@ -71,6 +77,16 @@ public class User extends AuditableModel {
 
   public void changePassword(PasswordHash newPasswordHash) {
     this.passwordHash = newPasswordHash;
+    this.mustChangePassword = false;
+  }
+
+  /** Marks the current password as temporary: the user must replace it after signing in. */
+  public void requirePasswordChange() {
+    this.mustChangePassword = true;
+  }
+
+  public boolean mustChangePassword() {
+    return mustChangePassword;
   }
 
   public void activate() {

@@ -1,5 +1,8 @@
 package com.nexoshift.petcarehub.profiles.application.internal.queryservices;
 
+import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.IamExternalService;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ClinicNotFoundException;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAllowedException;
 import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Veterinarian;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetVeterinarianByIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetVeterinarianByUserIdQuery;
@@ -7,6 +10,7 @@ import com.nexoshift.petcarehub.profiles.domain.model.queries.GetVeterinariansBy
 import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.ClinicId;
 import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.UserId;
 import com.nexoshift.petcarehub.profiles.domain.services.VeterinarianQueryService;
+import com.nexoshift.petcarehub.profiles.infrastructure.persistence.jpa.repositories.ClinicRepository;
 import com.nexoshift.petcarehub.profiles.infrastructure.persistence.jpa.repositories.VeterinarianRepository;
 import org.springframework.stereotype.Service;
 
@@ -24,15 +28,23 @@ import java.util.Optional;
 public class VeterinarianQueryServiceImpl implements VeterinarianQueryService {
 
     private final VeterinarianRepository veterinarianRepository;
+    private final ClinicRepository clinicRepository;
+    private final IamExternalService iamExternalService;
 
     /**
      * Constructs a veterinarian query service.
      *
      * @param veterinarianRepository the veterinarian repository
+     * @param clinicRepository the clinic repository
+     * @param iamExternalService the IAM external service
      */
     public VeterinarianQueryServiceImpl(
-            VeterinarianRepository veterinarianRepository) {
+            VeterinarianRepository veterinarianRepository,
+            ClinicRepository clinicRepository,
+            IamExternalService iamExternalService) {
         this.veterinarianRepository = veterinarianRepository;
+        this.clinicRepository = clinicRepository;
+        this.iamExternalService = iamExternalService;
     }
 
     /**
@@ -43,9 +55,9 @@ public class VeterinarianQueryServiceImpl implements VeterinarianQueryService {
      */
     @Override
     public Optional<Veterinarian> handle(GetVeterinarianByIdQuery query) {
-        return veterinarianRepository.findById(
-                query.veterinarianId()
-        );
+
+        validateAuthenticatedUser();
+        return veterinarianRepository.findById(query.veterinarianId());
     }
 
     /**
@@ -56,21 +68,41 @@ public class VeterinarianQueryServiceImpl implements VeterinarianQueryService {
      */
     @Override
     public Optional<Veterinarian> handle(GetVeterinarianByUserIdQuery query) {
-        return veterinarianRepository.findByUserId(
-                new UserId(query.userId())
-        );
+
+        validateAuthenticatedUser();
+        return veterinarianRepository.findByUserId(new UserId(query.userId()));
     }
 
     /**
-     * Retrieves all veterinarians belonging to a clinic.
+     * Retrieves veterinarians associated with a clinic.
      *
      * @param query the clinic identifier query
-     * @return the list of veterinarians
+     * @return the veterinarians belonging to the clinic
      */
     @Override
     public List<Veterinarian> handle(GetVeterinariansByClinicIdQuery query) {
+
+        validateAuthenticatedUser();
+
+        if (!clinicRepository.existsById(query.clinicId())) {
+            throw new ClinicNotFoundException(query.clinicId());
+        }
+
         return veterinarianRepository.findByClinicId(
-                new ClinicId(query.clinicId())
-        );
+                new ClinicId(query.clinicId()));
+    }
+
+    /**
+     * Validates that the authenticated user is active.
+     */
+    private void validateAuthenticatedUser() {
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        if (authenticatedUserId == null || authenticatedUserId <= 0
+                || !iamExternalService.existsActiveUser(authenticatedUserId)) {
+            throw new ProfileOperationNotAllowedException(
+                    "You are not authorized to access veterinarian profiles");
+        }
     }
 }

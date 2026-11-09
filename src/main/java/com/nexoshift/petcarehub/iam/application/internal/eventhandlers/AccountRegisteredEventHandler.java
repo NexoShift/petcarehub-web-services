@@ -22,6 +22,6 @@ public class AccountRegisteredEventHandler {
   @EventListener
   public void on(AccountRegisteredEvent event) {
     eventPublisher.publishEvent(new AccountRegisteredIntegrationEvent(
-        event.accountId(), event.accountType().name(), event.holderUserId(), event.occurredAt()));
+            event.accountId(), event.accountType().name(), event.holderUserId(), event.occurredAt()));
   }
 }

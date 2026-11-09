@@ -1,6 +1,7 @@
 package com.nexoshift.petcarehub.profiles.domain.services;
 
 import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Pet;
+import com.nexoshift.petcarehub.profiles.domain.model.queries.GetPetByCodeQuery;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetPetByIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetPetsByOwnerIdQuery;
 
@@ -27,4 +28,11 @@ public interface PetQueryService {
      * @return the list of pets belonging to the owner
      */
     List<Pet> handle(GetPetsByOwnerIdQuery query);
+
+    /**
+     * Retrieves a pet by its unique identification code
+     * @param query the pet code query
+     * @return the pet, if found
+     */
+    Optional<Pet> handle(GetPetByCodeQuery query);
 }

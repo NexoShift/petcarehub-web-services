@@ -1,7 +1,12 @@
 package com.nexoshift.petcarehub.profiles.interfaces.rest.controllers;
 
 import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.storage.ProfileImageStorageService;
+import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.IamExternalService;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAllowedException;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ClinicNotFoundException;
+import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Clinic;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdateClinicImageCommand;
+import com.nexoshift.petcarehub.profiles.domain.model.queries.GetClinicByAccountIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetClinicByIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.services.ClinicCommandService;
 import com.nexoshift.petcarehub.profiles.domain.services.ClinicQueryService;
@@ -21,6 +26,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Optional;
+
 /**
  * REST controller for managing clinic profiles.
  */
@@ -34,6 +41,7 @@ public class ClinicController {
     private final ClinicCommandService clinicCommandService;
     private final ClinicQueryService clinicQueryService;
     private final ProfileImageStorageService profileImageStorageService;
+    private final IamExternalService iamExternalService;
 
     /**
      * Constructs the clinic controller.
@@ -45,11 +53,13 @@ public class ClinicController {
     public ClinicController(
             ClinicCommandService clinicCommandService,
             ClinicQueryService clinicQueryService,
-            ProfileImageStorageService profileImageStorageService) {
+            ProfileImageStorageService profileImageStorageService,
+            IamExternalService iamExternalService) {
 
         this.clinicCommandService = clinicCommandService;
         this.clinicQueryService = clinicQueryService;
         this.profileImageStorageService = profileImageStorageService;
+        this.iamExternalService = iamExternalService;
     }
 
     /**
@@ -67,6 +77,14 @@ public class ClinicController {
     })
     public ResponseEntity<ClinicResource> createClinic(
             @ModelAttribute CreateClinicResource resource) {
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+        var hasAdminRole = iamExternalService.userHasRole(authenticatedUserId, "ROLE_CLINIC_ADMIN");
+        var belongsToAccount = resource.accountId().equals(
+                iamExternalService.fetchAccountIdByUserId(authenticatedUserId));
+        if (!hasAdminRole || !belongsToAccount) {
+            throw new ProfileOperationNotAllowedException("You cannot create a profile for this clinic");
+        }
 
         var profileImageKey = profileImageStorageService.upload(
                 resource.image(), IMAGE_FOLDER
@@ -136,6 +154,41 @@ public class ClinicController {
 
         var clinicResource = ClinicResourceFromEntityAssembler
                 .toResourceFromEntity(clinicEntity, profileImageUrl);
+
+        return ResponseEntity.ok(clinicResource);
+    }
+
+    /**
+     * Retrieves a clinic by its IAM account identifier.
+     *
+     * @param accountId the IAM account identifier
+     * @return the clinic resource
+     */
+    @GetMapping(params = "accountId")
+    @Operation(
+            summary = "Get clinic by account ID",
+            description = "Get clinic by IAM account ID"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Clinic found"),
+            @ApiResponse(responseCode = "404", description = "Clinic not found")
+    })
+    public ResponseEntity<ClinicResource> getClinicByAccountId(
+            @RequestParam Long accountId) {
+
+        var clinic = clinicQueryService.handle(
+                new GetClinicByAccountIdQuery(accountId)
+        );
+
+        if (clinic.isEmpty()) return ResponseEntity.notFound().build();
+
+        var entity = clinic.get();
+        var profileImageUrl = profileImageStorageService.generatePresignedUrl(
+                entity.getProfileImageKey()
+        );
+
+        var clinicResource = ClinicResourceFromEntityAssembler
+                .toResourceFromEntity(entity, profileImageUrl);
 
         return ResponseEntity.ok(clinicResource);
     }
@@ -212,17 +265,32 @@ public class ClinicController {
 
         if (newImageKey == null) return ResponseEntity.badRequest().build();
 
-        var command = new UpdateClinicImageCommand(clinicId, newImageKey);
+        Optional<Clinic> updatedClinic;
 
-        var updatedClinic = clinicCommandService.handle(command);
+        try {
+            var command = new UpdateClinicImageCommand(clinicId, newImageKey);
 
-        if(updatedClinic.isEmpty()) return ResponseEntity.badRequest().build();
+            updatedClinic = clinicCommandService.handle(command);
+
+            if (updatedClinic.isEmpty()) {
+                throw new ClinicNotFoundException(clinicId);
+            }
+
+        } catch (RuntimeException e) {
+            try {
+                profileImageStorageService.delete(newImageKey);
+            } catch (RuntimeException cleanupError) {
+                e.addSuppressed(cleanupError);
+            }
+            throw e;
+        }
 
         if(previousImageKey != null && !previousImageKey.equals(newImageKey)) {
             profileImageStorageService.delete(previousImageKey);
         }
 
         var clinicEntity = updatedClinic.get();
+
         var profileImageUrl = profileImageStorageService.generatePresignedUrl(
                 clinicEntity.getProfileImageKey()
         );

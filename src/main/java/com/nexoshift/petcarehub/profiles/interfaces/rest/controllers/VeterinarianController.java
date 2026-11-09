@@ -1,8 +1,11 @@
 package com.nexoshift.petcarehub.profiles.interfaces.rest.controllers;
 
 import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.storage.ProfileImageStorageService;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.VeterinarianNotFoundException;
+import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Veterinarian;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdateVeterinarianImageCommand;
 import com.nexoshift.petcarehub.profiles.domain.model.queries.GetVeterinarianByIdQuery;
+import com.nexoshift.petcarehub.profiles.domain.model.queries.GetVeterinarianByUserIdQuery;
 import com.nexoshift.petcarehub.profiles.domain.services.VeterinarianCommandService;
 import com.nexoshift.petcarehub.profiles.domain.services.VeterinarianQueryService;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.resources.CreateVeterinarianResource;
@@ -11,6 +14,11 @@ import com.nexoshift.petcarehub.profiles.interfaces.rest.resources.VeterinarianR
 import com.nexoshift.petcarehub.profiles.interfaces.rest.transform.CreateVeterinarianCommandFromResourceAssembler;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.transform.UpdateVeterinarianCommandFromResourceAssembler;
 import com.nexoshift.petcarehub.profiles.interfaces.rest.transform.VeterinarianResourceFromEntityAssembler;
+import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.IamExternalService;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ClinicNotFoundException;
+import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAllowedException;
+import com.nexoshift.petcarehub.profiles.domain.model.queries.GetClinicByIdQuery;
+import com.nexoshift.petcarehub.profiles.domain.services.ClinicQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -20,6 +28,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Optional;
 
 /**
  * REST controller for managing veterinarian profiles.
@@ -34,6 +44,8 @@ public class VeterinarianController {
     private final VeterinarianCommandService veterinarianCommandService;
     private final VeterinarianQueryService veterinarianQueryService;
     private final ProfileImageStorageService profileImageStorageService;
+    private final ClinicQueryService clinicQueryService;
+    private final IamExternalService iamExternalService;
 
     /**
      * Constructs the veterinarian controller.
@@ -45,11 +57,15 @@ public class VeterinarianController {
     public VeterinarianController(
             VeterinarianCommandService veterinarianCommandService,
             VeterinarianQueryService veterinarianQueryService,
-            ProfileImageStorageService profileImageStorageService) {
+            ProfileImageStorageService profileImageStorageService,
+            ClinicQueryService clinicQueryService,
+            IamExternalService iamExternalService) {
 
         this.veterinarianCommandService = veterinarianCommandService;
         this.veterinarianQueryService = veterinarianQueryService;
         this.profileImageStorageService = profileImageStorageService;
+        this.clinicQueryService = clinicQueryService;
+        this.iamExternalService = iamExternalService;
     }
 
     /**
@@ -68,6 +84,16 @@ public class VeterinarianController {
     })
     public ResponseEntity<VeterinarianResource> createVeterinarian(
             @ModelAttribute CreateVeterinarianResource resource) {
+
+        var clinic = clinicQueryService.handle(new GetClinicByIdQuery(resource.clinicId()))
+                .orElseThrow(() -> new ClinicNotFoundException(resource.clinicId()));
+        var clinicAccountId = clinic.getAccountId().accountId();
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+        if (!iamExternalService.userHasRole(authenticatedUserId, "ROLE_CLINIC_ADMIN")
+                || !iamExternalService.fetchAccountIdByUserId(authenticatedUserId).equals(clinicAccountId)) {
+            throw new ProfileOperationNotAllowedException("You cannot register veterinarians for this clinic");
+        }
 
         var profileImageKey = profileImageStorageService.upload(
                 resource.image(), IMAGE_FOLDER
@@ -134,6 +160,38 @@ public class VeterinarianController {
         var profileImageUrl = profileImageStorageService.generatePresignedUrl(
                 entity.getProfileImageKey()
         );
+
+        var veterinarianResource = VeterinarianResourceFromEntityAssembler
+                .toResourceFromEntity(entity, profileImageUrl);
+
+        return ResponseEntity.ok(veterinarianResource);
+    }
+
+    /**
+     * Retrieves a veterinarian by its IAM user identifier.
+     *
+     * @param userId the IAM user identifier
+     * @return the veterinarian resource
+     */
+    @GetMapping(params = "userId")
+    @Operation(
+            summary = "Get veterinarian by user ID",
+            description = "Get veterinarian by IAM user ID"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Veterinarian found"),
+            @ApiResponse(responseCode = "404", description = "Veterinarian not found")
+    })
+    public ResponseEntity<VeterinarianResource> getVeterinarianByUserId(
+            @RequestParam Long userId) {
+
+        var veterinarian = veterinarianQueryService.handle(new GetVeterinarianByUserIdQuery(userId));
+
+        if (veterinarian.isEmpty()) return ResponseEntity.notFound().build();
+
+        var entity = veterinarian.get();
+        var profileImageUrl = profileImageStorageService.generatePresignedUrl(
+                entity.getProfileImageKey());
 
         var veterinarianResource = VeterinarianResourceFromEntityAssembler
                 .toResourceFromEntity(entity, profileImageUrl);
@@ -220,11 +278,27 @@ public class VeterinarianController {
             return ResponseEntity.badRequest().build();
         }
 
-        var command = new UpdateVeterinarianImageCommand(veterinarianId, newImageKey);
+        Optional<Veterinarian> updatedVeterinarian;
 
-        var updatedVeterinarian = veterinarianCommandService.handle(command);
+        try {
+            var command = new UpdateVeterinarianImageCommand(
+                    veterinarianId, newImageKey
+            );
 
-        if(updatedVeterinarian.isEmpty()) return ResponseEntity.notFound().build();
+            updatedVeterinarian = veterinarianCommandService.handle(command);
+
+            if (updatedVeterinarian.isEmpty()) {
+                throw new VeterinarianNotFoundException(veterinarianId);
+            }
+
+        } catch (RuntimeException e) {
+            try {
+                profileImageStorageService.delete(newImageKey);
+            } catch (RuntimeException cleanupError) {
+                e.addSuppressed(cleanupError);
+            }
+            throw e;
+        }
 
         if (previousImageKey != null && !previousImageKey.equals(newImageKey)) {
             profileImageStorageService.delete(previousImageKey);

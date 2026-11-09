@@ -2,8 +2,8 @@ package com.nexoshift.petcarehub.iam.domain.model.commands;
 
 import com.nexoshift.petcarehub.iam.domain.model.valueobjects.AccountType;
 
+/** Registers a new account with its holder. IAM only stores credentials, account type and roles. */
 public record SignUpCommand(String email, String password, AccountType accountType) {
-
   public SignUpCommand {
     PasswordPolicy.validate(password);
     if (accountType == null) {
