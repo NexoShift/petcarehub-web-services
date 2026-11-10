@@ -1,6 +1,6 @@
 package com.nexoshift.petcarehub.clinicalattention.domain.model.queries;
 
-/** The requester must be a veterinarian or the owner of the pet. */
+/** The requester must be the owner of the pet or a veterinarian of a clinic where the pet is a patient. */
 public record GetClinicalConsultationsByPetIdQuery(Long petId, Long requesterUserId) {
 
   public GetClinicalConsultationsByPetIdQuery {
