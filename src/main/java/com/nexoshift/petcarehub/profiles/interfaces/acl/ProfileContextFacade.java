@@ -88,6 +88,17 @@ public interface ProfileContextFacade {
     Long fetchClinicIdByVeterinarianId(Long veterinarianId);
 
     /**
+     * Retrieves the veterinarian profile identifier of an IAM user.
+     * <p>
+     * Lo usan Clinical Attention y AI Assistance: el token JWT trae el userId de IAM,
+     * pero las consultas guardan el id del perfil del veterinario (tabla veterinarians).
+     *
+     * @param userId the IAM user identifier (the authenticated user)
+     * @return the veterinarian identifier, or zero if the user has no veterinarian profile
+     */
+    Long fetchVeterinarianIdByUserId(Long userId);
+
+    /**
      * Retrieves the IAM user identifier of a veterinarian.
      *
      * @param veterinarianId the veterinarian identifier

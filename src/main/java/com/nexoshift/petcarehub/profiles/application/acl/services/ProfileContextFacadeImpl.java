@@ -1,8 +1,10 @@
 package com.nexoshift.petcarehub.profiles.application.acl.services;
 
+import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Veterinarian;
 import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.ClinicId;
 import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.PetCode;
 import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.PetId;
+import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.UserId;
 import com.nexoshift.petcarehub.profiles.infrastructure.persistence.jpa.repositories.*;
 import com.nexoshift.petcarehub.profiles.interfaces.acl.PetProfileSnapshot;
 import com.nexoshift.petcarehub.profiles.interfaces.acl.ProfileContextFacade;
@@ -181,6 +183,19 @@ public class ProfileContextFacadeImpl implements ProfileContextFacade {
         }
 
         return veterinarian.get().getClinicId().clinicId();
+    }
+
+    @Override
+    public Long fetchVeterinarianIdByUserId(Long userId) {
+
+        // Un usuario de IAM tiene como máximo un perfil de veterinario (una clínica).
+        if (userId == null || userId <= 0) {
+            return 0L;
+        }
+
+        return veterinarianRepository.findByUserId(new UserId(userId))
+                .map(Veterinarian::getId)
+                .orElse(0L);
     }
 
     @Override
