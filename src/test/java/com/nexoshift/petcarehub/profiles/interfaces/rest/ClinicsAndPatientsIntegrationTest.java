@@ -124,7 +124,7 @@ class ClinicsAndPatientsIntegrationTest {
   }
 
   @Test
-  @DisplayName("The clinic lists its veterinarians, including members; without a token it is 401")
+  @DisplayName("Only the clinic staff (admin and its vets) can list its veterinarians")
   void listsVeterinarians() throws Exception {
     var member = api.addVeterinarian(clinic);
     var url = "/api/v1/clinics/" + clinic.clinicId() + "/veterinarians";
@@ -133,9 +133,15 @@ class ClinicsAndPatientsIntegrationTest {
     assertThat(mine.status()).isEqualTo(200);
     assertThat(mine.body()).contains("\"id\":" + clinic.veterinarianId());
     assertThat(mine.body()).contains("\"id\":" + member.veterinarianId());
+
+    var asMember = api.send(HttpMethod.GET, url, member.member().token(), null);
+    assertThat(asMember.status()).isEqualTo(200);
+
+    assertThat(api.send(HttpMethod.GET, url, token(otherClinic), null).status()).isEqualTo(403);
+    assertThat(api.send(HttpMethod.GET, url, owner.owner().token(), null).status()).isEqualTo(403);
     assertThat(api.send(HttpMethod.GET, url, null, null).status()).isEqualTo(401);
-    // Hoy cualquier usuario autenticado (incluso otra clínica) puede ver esta lista.
-    // Si el equipo decide restringirla, agregar aquí: otra clínica -> 403.
+    assertThat(api.send(HttpMethod.GET, "/api/v1/clinics/999999/veterinarians", token(clinic), null)
+            .status()).isEqualTo(404);
   }
 
   @Test
