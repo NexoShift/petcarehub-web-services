@@ -41,9 +41,26 @@ public class ProfilesServiceFacade implements ExternalProfilesService {
     return ownerUserId.equals(profileContextFacade.fetchUserIdByPetOwnerId(petOwnerId));
   }
 
+  /** userId (IAM) -> perfil vet -> clínica -> ¿la mascota es paciente de esa clínica? */
+  @Override
+  public boolean isPetPatientOfVeterinarianClinic(Long petId, Long veterinarianUserId) {
+    if (petId == null || veterinarianUserId == null) {
+      return false;
+    }
+    var veterinarianId = profileContextFacade.fetchVeterinarianIdByUserId(veterinarianUserId);
+    if (veterinarianId == null || veterinarianId <= 0) {
+      return false;
+    }
+    var clinicId = profileContextFacade.fetchClinicIdByVeterinarianId(veterinarianId);
+    if (clinicId == null || clinicId <= 0) {
+      return false;
+    }
+    return profileContextFacade.isPetPatientOfClinic(clinicId, petId);
+  }
+
   private static PetSummary toSummary(PetProfileSnapshot pet) {
     return new PetSummary(pet.petId(), pet.name(), speciesOf(pet.species()), pet.breed(),
-        sexOf(pet.sex()), ageInMonths(pet.birthDate()), "no registrado");
+            sexOf(pet.sex()), ageInMonths(pet.birthDate()), "no registrado");
   }
 
   private static String speciesOf(String species) {
