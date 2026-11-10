@@ -82,14 +82,40 @@ public class VeterinarianQueryServiceImpl implements VeterinarianQueryService {
     @Override
     public List<Veterinarian> handle(GetVeterinariansByClinicIdQuery query) {
 
-        validateAuthenticatedUser();
-
-        if (!clinicRepository.existsById(query.clinicId())) {
-            throw new ClinicNotFoundException(query.clinicId());
-        }
+        validateClinicStaff(query.clinicId());
 
         return veterinarianRepository.findByClinicId(
                 new ClinicId(query.clinicId()));
+    }
+
+    /**
+     * Validates that the authenticated user is the clinic admin or one of its veterinarians.
+     * The full staff list is internal data of the clinic.
+     *
+     * @param clinicId the clinic identifier
+     */
+    private void validateClinicStaff(Long clinicId) {
+
+        var clinic = clinicRepository.findById(clinicId)
+                .orElseThrow(() -> new ClinicNotFoundException(clinicId));
+
+        validateAuthenticatedUser();
+
+        var authenticatedUserId = iamExternalService.fetchAuthenticatedUserId();
+
+        var isClinicAdmin = iamExternalService.userHasRole(
+                authenticatedUserId, "ROLE_CLINIC_ADMIN");
+
+        var isVeterinarian = iamExternalService.userHasRole(
+                authenticatedUserId, "ROLE_VETERINARIAN");
+
+        var accountId = iamExternalService.fetchAccountIdByUserId(authenticatedUserId);
+
+        if ((!isClinicAdmin && !isVeterinarian)
+                || !clinic.getAccountId().accountId().equals(accountId)) {
+            throw new ProfileOperationNotAllowedException(
+                    "You are not authorized to access this clinic's veterinarians");
+        }
     }
 
     /**
