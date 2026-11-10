@@ -12,9 +12,11 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /** Translates exceptions into uniform HTTP responses (400 / 401 / 403 / 404 / 409 / 500). */
 @RestControllerAdvice
@@ -24,50 +26,66 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ErrorResource> handleValidation(
-      MethodArgumentNotValidException exception, HttpServletRequest request) {
+          MethodArgumentNotValidException exception, HttpServletRequest request) {
     List<String> details = exception.getBindingResult().getFieldErrors().stream()
-        .map(error -> error.getField() + ": " + error.getDefaultMessage())
-        .toList();
+            .map(error -> error.getField() + ": " + error.getDefaultMessage())
+            .toList();
     return build(HttpStatus.BAD_REQUEST, "Invalid request data", request, details);
   }
 
   @ExceptionHandler({
-      BadRequestException.class,
-      IllegalArgumentException.class,
-      HttpMessageNotReadableException.class,
-      MethodArgumentTypeMismatchException.class})
+          BadRequestException.class,
+          IllegalArgumentException.class,
+          HttpMessageNotReadableException.class,
+          MethodArgumentTypeMismatchException.class})
   public ResponseEntity<ErrorResource> handleBadRequest(
-      Exception exception, HttpServletRequest request) {
+          Exception exception, HttpServletRequest request) {
     String message = exception instanceof HttpMessageNotReadableException
-        ? "Malformed request body"
-        : exception.getMessage();
+            ? "Malformed request body"
+            : exception.getMessage();
     return build(HttpStatus.BAD_REQUEST, message, request, List.of());
+  }
+
+  /**
+   * Falta un parámetro (?petId=) o una parte multipart (el archivo "file").
+   * Antes caía en el handler genérico y respondía 500; es un error del cliente: 400.
+   */
+  @ExceptionHandler({
+          MissingServletRequestParameterException.class,
+          MissingServletRequestPartException.class})
+  public ResponseEntity<ErrorResource> handleMissingInput(
+          Exception exception, HttpServletRequest request) {
+    String name = exception instanceof MissingServletRequestPartException part
+            ? part.getRequestPartName()
+            : ((MissingServletRequestParameterException) exception).getParameterName();
+    return build(HttpStatus.BAD_REQUEST, "Required request value '" + name + "' is missing",
+            request, List.of());
   }
 
   @ExceptionHandler({UnauthorizedException.class, AuthenticationException.class})
   public ResponseEntity<ErrorResource> handleUnauthorized(
-      RuntimeException exception, HttpServletRequest request) {
+          RuntimeException exception, HttpServletRequest request) {
     return build(HttpStatus.UNAUTHORIZED, exception.getMessage(), request, List.of());
   }
 
   @ExceptionHandler({ForbiddenException.class, AccessDeniedException.class})
   public ResponseEntity<ErrorResource> handleForbidden(
-      RuntimeException exception, HttpServletRequest request) {
+          RuntimeException exception, HttpServletRequest request) {
     String message = exception instanceof AccessDeniedException
-        ? "You do not have permission to perform this action"
-        : exception.getMessage();
+            ? "You do not have permission to perform this action"
+            : exception.getMessage();
     return build(HttpStatus.FORBIDDEN, message, request, List.of());
   }
 
   @ExceptionHandler(NotFoundException.class)
   public ResponseEntity<ErrorResource> handleNotFound(
-      NotFoundException exception, HttpServletRequest request) {
+          NotFoundException exception, HttpServletRequest request) {
     return build(HttpStatus.NOT_FOUND, exception.getMessage(), request, List.of());
   }
 
   @ExceptionHandler({ConflictException.class, IllegalStateException.class})
   public ResponseEntity<ErrorResource> handleConflict(
-      RuntimeException exception, HttpServletRequest request) {
+          RuntimeException exception, HttpServletRequest request) {
     return build(HttpStatus.CONFLICT, exception.getMessage(), request, List.of());
   }
 
@@ -85,15 +103,15 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResource> handleUnexpected(
-      Exception exception, HttpServletRequest request) {
+          Exception exception, HttpServletRequest request) {
     LOGGER.error("Unexpected error on {}", request.getRequestURI(), exception);
     return build(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error", request, List.of());
   }
 
   private ResponseEntity<ErrorResource> build(
-      HttpStatus status, String message, HttpServletRequest request, List<String> details) {
+          HttpStatus status, String message, HttpServletRequest request, List<String> details) {
     var body = ErrorResource.of(
-        status.value(), status.getReasonPhrase(), message, request.getRequestURI(), details);
+            status.value(), status.getReasonPhrase(), message, request.getRequestURI(), details);
     return ResponseEntity.status(status).body(body);
   }
 }
