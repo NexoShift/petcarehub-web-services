@@ -1,6 +1,7 @@
 package com.nexoshift.petcarehub.clinicalexams.domain.repositories;
 
 import com.nexoshift.petcarehub.clinicalexams.domain.model.aggregates.ClinicalExam;
+import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicId;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicalConsultationId;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ExamStatus;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.PetId;
@@ -16,6 +17,10 @@ public interface ClinicalExamRepository {
     List<ClinicalExam> findAllByConsultationId(ClinicalConsultationId consultationId);
 
     List<ClinicalExam> findAllByPetId(PetId petId);
+
+    List<ClinicalExam> findAllByClinicId(ClinicId clinicId);
+
+    List<ClinicalExam> findAllByClinicIdAndStatus(ClinicId clinicId, ExamStatus status);
 
     List<ClinicalExam> findAllByPetIdAndStatus(PetId petId, ExamStatus status);
 }

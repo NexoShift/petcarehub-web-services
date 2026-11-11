@@ -2,18 +2,20 @@ package com.nexoshift.petcarehub.clinicalexams.infrastructure.storage.local;
 
 import com.nexoshift.petcarehub.clinicalexams.application.internal.outboundservices.storage.FileStorageService;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.StorageLocation;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Service;
 
-/** Stores clinical files in a local folder. Used in development. */
+/** Stores clinical files in a local folder (default: clinical-exams.storage.provider=local). */
 @Service
-@Profile("dev")
+@ConditionalOnProperty(name = "clinical-exams.storage.provider", havingValue = "local",
+        matchIfMissing = true)
 public class LocalFileStorageServiceImpl implements FileStorageService {
 
     private static final String BUCKET = "local";

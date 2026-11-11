@@ -6,26 +6,10 @@ import com.nexoshift.petcarehub.clinicalexams.domain.model.entities.ClinicalFile
 import com.nexoshift.petcarehub.clinicalexams.domain.model.entities.ExamResult;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.events.ClinicalExamRequestedEvent;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.events.ExamResultValidatedEvent;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.CancellationDetail;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicalConsultationId;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicalFileType;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ExamStatus;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ExamType;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.PetId;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.StorageLocation;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.VeterinarianId;
+import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.*;
 import com.nexoshift.petcarehub.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
-import jakarta.persistence.AttributeOverride;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Embedded;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.*;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -43,6 +27,10 @@ public class ClinicalExam extends AuditableAbstractAggregateRoot<ClinicalExam> {
     @AttributeOverride(name = "clinicalConsultationId",
             column = @Column(name = "consultation_id", nullable = false))
     private ClinicalConsultationId consultationId;
+
+    @Embedded
+    @AttributeOverride(name = "clinicId", column = @Column(name = "clinic_id", nullable = false))
+    private ClinicId clinicId;
 
     @Embedded
     @AttributeOverride(name = "petId", column = @Column(name = "pet_id", nullable = false))
@@ -86,12 +74,15 @@ public class ClinicalExam extends AuditableAbstractAggregateRoot<ClinicalExam> {
     protected ClinicalExam() {
     }
 
-    public ClinicalExam(ClinicalConsultationId consultationId, PetId petId,
+    public ClinicalExam(ClinicalConsultationId consultationId, ClinicId clinicId, PetId petId,
                         VeterinarianId requestedBy, ExamType type, String indication) {
-        if (consultationId == null || petId == null || requestedBy == null || type == null) {
-            throw new IllegalArgumentException("Consultation, pet, veterinarian and type are required");
+        if (consultationId == null || clinicId == null || petId == null || requestedBy == null
+                || type == null) {
+            throw new IllegalArgumentException(
+                    "Consultation, clinic, pet, veterinarian and type are required");
         }
         this.consultationId = consultationId;
+        this.clinicId = clinicId;
         this.petId = petId;
         this.requestedBy = requestedBy;
         this.type = type;
@@ -183,6 +174,10 @@ public class ClinicalExam extends AuditableAbstractAggregateRoot<ClinicalExam> {
 
     public Long getConsultationId() {
         return consultationId.clinicalConsultationId();
+    }
+
+    public Long getClinicId() {
+        return clinicId.clinicId();
     }
 
     public Long getPetId() {

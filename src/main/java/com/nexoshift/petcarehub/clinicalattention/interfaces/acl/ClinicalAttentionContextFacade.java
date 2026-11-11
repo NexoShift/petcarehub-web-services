@@ -15,4 +15,7 @@ public interface ClinicalAttentionContextFacade {
 
   /** Returns the veterinarian in charge, or 0 if the consultation does not exist. */
   Long fetchVeterinarianIdByConsultationId(Long consultationId);
+
+  /** Returns the clinic where the consultation takes place, or 0 if it does not exist. */
+  Long fetchClinicIdByConsultationId(Long consultationId);
 }

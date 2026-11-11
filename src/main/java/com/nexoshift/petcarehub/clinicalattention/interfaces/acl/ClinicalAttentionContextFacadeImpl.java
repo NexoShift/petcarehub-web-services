@@ -33,8 +33,15 @@ public class ClinicalAttentionContextFacadeImpl implements ClinicalAttentionCont
   @Override
   public Long fetchVeterinarianIdByConsultationId(Long consultationId) {
     return find(consultationId)
-        .map(consultation -> consultation.getVeterinarianId().veterinarianId())
-        .orElse(0L);
+            .map(consultation -> consultation.getVeterinarianId().veterinarianId())
+            .orElse(0L);
+  }
+
+  @Override
+  public Long fetchClinicIdByConsultationId(Long consultationId) {
+    return find(consultationId)
+            .map(consultation -> consultation.getClinicId().clinicId())
+            .orElse(0L);
   }
 
   private Optional<ClinicalConsultation> find(Long consultationId) {

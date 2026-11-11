@@ -1,5 +1,8 @@
 package com.nexoshift.petcarehub.clinicalexams.domain;
 
+import com.nexoshift.petcarehub.aiassistance.domain.model.valueobjects.ClinicalConsultationId;
+import com.nexoshift.petcarehub.aiassistance.domain.model.valueobjects.PetId;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.valueobjects.VeterinarianId;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.*;
 import org.junit.jupiter.api.Test;
 
