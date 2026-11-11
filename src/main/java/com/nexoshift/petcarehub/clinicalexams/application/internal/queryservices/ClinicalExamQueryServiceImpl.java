@@ -4,23 +4,19 @@ import com.nexoshift.petcarehub.clinicalexams.application.internal.access.Clinic
 import com.nexoshift.petcarehub.clinicalexams.application.internal.outboundservices.storage.FileStorageService;
 import com.nexoshift.petcarehub.clinicalexams.domain.exceptions.ClinicalExamNotFoundException;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.aggregates.ClinicalExam;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamByIdQuery;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamsByConsultationIdQuery;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamsByPetIdAndStatusQuery;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamsByPetIdQuery;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamsOfMyClinicQuery;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalFileContentQuery;
+import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.*;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicId;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicalConsultationId;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicalFileContent;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.PetId;
 import com.nexoshift.petcarehub.clinicalexams.domain.repositories.ClinicalExamRepository;
 import com.nexoshift.petcarehub.clinicalexams.domain.services.ClinicalExamQueryService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /** Reads of Clinical Exams. Newest exams first. */
 @Service

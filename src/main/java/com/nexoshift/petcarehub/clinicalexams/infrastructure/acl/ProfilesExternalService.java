@@ -2,8 +2,9 @@ package com.nexoshift.petcarehub.clinicalexams.infrastructure.acl;
 
 import com.nexoshift.petcarehub.clinicalexams.application.internal.outboundservices.acl.ExternalProfilesService;
 import com.nexoshift.petcarehub.profiles.interfaces.acl.ProfileContextFacade;
-import java.util.Optional;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 /** Adapter to the published facade of Profiles (0 means "does not exist"). */
 @Service("clinicalExamsProfilesExternalService")

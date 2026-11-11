@@ -2,8 +2,9 @@ package com.nexoshift.petcarehub.clinicalexams.infrastructure.acl;
 
 import com.nexoshift.petcarehub.clinicalattention.interfaces.acl.ClinicalAttentionContextFacade;
 import com.nexoshift.petcarehub.clinicalexams.application.internal.outboundservices.acl.ExternalClinicalAttentionService;
-import java.util.Optional;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 /** Adapter to the published facade of Clinical Attention (0 means "does not exist"). */
 @Service

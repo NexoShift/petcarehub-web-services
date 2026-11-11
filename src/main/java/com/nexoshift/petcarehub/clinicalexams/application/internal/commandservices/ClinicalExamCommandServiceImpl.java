@@ -6,13 +6,7 @@ import com.nexoshift.petcarehub.clinicalexams.application.internal.outboundservi
 import com.nexoshift.petcarehub.clinicalexams.domain.exceptions.ClinicalExamNotFoundException;
 import com.nexoshift.petcarehub.clinicalexams.domain.exceptions.ConsultationNotAvailableException;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.aggregates.ClinicalExam;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.CancelClinicalExamCommand;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.CompleteClinicalExamCommand;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.RegisterExamResultCommand;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.RequestClinicalExamCommand;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.StartClinicalExamCommand;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.UploadClinicalFileCommand;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.ValidateExamResultCommand;
+import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.*;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.entities.ClinicalFile;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicId;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicalConsultationId;
