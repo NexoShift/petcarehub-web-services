@@ -1,19 +1,18 @@
 package com.nexoshift.petcarehub.clinicalexams.application;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 import com.nexoshift.petcarehub.clinicalexams.application.internal.access.ClinicalExamAccessGuard;
 import com.nexoshift.petcarehub.clinicalexams.application.internal.outboundservices.acl.ExternalClinicalAttentionService;
 import com.nexoshift.petcarehub.clinicalexams.application.internal.outboundservices.acl.ExternalProfilesService;
 import com.nexoshift.petcarehub.clinicalexams.domain.exceptions.ClinicalExamAccessDeniedException;
 import com.nexoshift.petcarehub.clinicalexams.domain.exceptions.ConsultationNotFoundException;
 import com.nexoshift.petcarehub.clinicalexams.domain.exceptions.VeterinarianNotRegisteredException;
+import org.junit.jupiter.api.Test;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * Reglas de acceso sin Spring, con fakes en memoria.

@@ -1,14 +1,5 @@
 package com.nexoshift.petcarehub.clinicalexams.application;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import com.nexoshift.petcarehub.clinicalexams.application.internal.access.ClinicalExamAccessGuard;
 import com.nexoshift.petcarehub.clinicalexams.application.internal.commandservices.ClinicalExamCommandServiceImpl;
 import com.nexoshift.petcarehub.clinicalexams.application.internal.outboundservices.acl.ExternalClinicalAttentionService;
@@ -20,17 +11,18 @@ import com.nexoshift.petcarehub.clinicalexams.domain.model.aggregates.ClinicalEx
 import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.RequestClinicalExamCommand;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.StartClinicalExamCommand;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.UploadClinicalFileCommand;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicId;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicalConsultationId;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ExamStatus;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ExamType;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.PetId;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.StorageLocation;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.VeterinarianId;
+import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.*;
 import com.nexoshift.petcarehub.clinicalexams.domain.repositories.ClinicalExamRepository;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 
 class ClinicalExamCommandServiceImplTest {
 
