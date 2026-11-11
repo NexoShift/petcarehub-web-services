@@ -1,7 +1,7 @@
 package com.nexoshift.petcarehub.clinicalexams.domain.model.commands;
 
 public record UploadClinicalFileCommand(
-        Long examId, String fileName, String contentType, byte[] content) {
+        Long examId, Long requesterUserId, String fileName, String contentType, byte[] content) {
 
     public UploadClinicalFileCommand {
         if (content == null || content.length == 0) {

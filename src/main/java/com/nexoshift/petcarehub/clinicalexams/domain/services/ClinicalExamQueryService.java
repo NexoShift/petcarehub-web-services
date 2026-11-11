@@ -5,6 +5,7 @@ import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalEx
 import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamsByConsultationIdQuery;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamsByPetIdAndStatusQuery;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamsByPetIdQuery;
+import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamsOfMyClinicQuery;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalFileContentQuery;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicalFileContent;
 import java.util.List;
@@ -19,6 +20,8 @@ public interface ClinicalExamQueryService {
     List<ClinicalExam> handle(GetClinicalExamsByPetIdQuery query);
 
     List<ClinicalExam> handle(GetClinicalExamsByPetIdAndStatusQuery query);
+
+    List<ClinicalExam> handle(GetClinicalExamsOfMyClinicQuery query);
 
     ClinicalFileContent handle(GetClinicalFileContentQuery query);
 }

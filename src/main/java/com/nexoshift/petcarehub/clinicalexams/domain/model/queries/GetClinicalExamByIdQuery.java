@@ -1,4 +1,4 @@
 package com.nexoshift.petcarehub.clinicalexams.domain.model.queries;
 
-public record GetClinicalExamByIdQuery(Long examId) {
+public record GetClinicalExamByIdQuery(Long examId, Long requesterUserId) {
 }

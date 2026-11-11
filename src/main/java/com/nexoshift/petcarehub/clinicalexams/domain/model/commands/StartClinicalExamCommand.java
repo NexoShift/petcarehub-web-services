@@ -1,4 +1,4 @@
 package com.nexoshift.petcarehub.clinicalexams.domain.model.commands;
 
-public record StartClinicalExamCommand(Long examId) {
+public record StartClinicalExamCommand(Long examId, Long requesterUserId) {
 }

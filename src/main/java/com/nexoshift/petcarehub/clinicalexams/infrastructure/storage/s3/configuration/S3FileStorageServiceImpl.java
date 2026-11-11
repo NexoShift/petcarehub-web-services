@@ -4,22 +4,26 @@ import com.nexoshift.petcarehub.clinicalexams.application.internal.outboundservi
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.StorageLocation;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
+/**
+ * Stores clinical files in Amazon S3. It reuses the S3 client and bucket of shared
+ * (aws.s3.*). Enabled with clinical-exams.storage.provider=s3.
+ */
 @Service
-@Profile("prod")
+@ConditionalOnProperty(name = "clinical-exams.storage.provider", havingValue = "s3")
 public class S3FileStorageServiceImpl implements FileStorageService {
 
     private final S3Client s3Client;
     private final String bucket;
 
     public S3FileStorageServiceImpl(S3Client s3Client,
-                                    @Value("${clinical-exams.storage.s3.bucket}") String bucket) {
+                                    @Value("${aws.s3.bucket}") String bucket) {
         this.s3Client = s3Client;
         this.bucket = bucket;
     }

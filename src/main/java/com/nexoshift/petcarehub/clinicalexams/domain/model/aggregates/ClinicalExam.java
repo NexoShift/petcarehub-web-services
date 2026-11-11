@@ -7,6 +7,7 @@ import com.nexoshift.petcarehub.clinicalexams.domain.model.entities.ExamResult;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.events.ClinicalExamRequestedEvent;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.events.ExamResultValidatedEvent;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.CancellationDetail;
+import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicId;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicalConsultationId;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicalFileType;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ExamStatus;
@@ -43,6 +44,10 @@ public class ClinicalExam extends AuditableAbstractAggregateRoot<ClinicalExam> {
     @AttributeOverride(name = "clinicalConsultationId",
             column = @Column(name = "consultation_id", nullable = false))
     private ClinicalConsultationId consultationId;
+
+    @Embedded
+    @AttributeOverride(name = "clinicId", column = @Column(name = "clinic_id", nullable = false))
+    private ClinicId clinicId;
 
     @Embedded
     @AttributeOverride(name = "petId", column = @Column(name = "pet_id", nullable = false))
@@ -86,12 +91,15 @@ public class ClinicalExam extends AuditableAbstractAggregateRoot<ClinicalExam> {
     protected ClinicalExam() {
     }
 
-    public ClinicalExam(ClinicalConsultationId consultationId, PetId petId,
+    public ClinicalExam(ClinicalConsultationId consultationId, ClinicId clinicId, PetId petId,
                         VeterinarianId requestedBy, ExamType type, String indication) {
-        if (consultationId == null || petId == null || requestedBy == null || type == null) {
-            throw new IllegalArgumentException("Consultation, pet, veterinarian and type are required");
+        if (consultationId == null || clinicId == null || petId == null || requestedBy == null
+                || type == null) {
+            throw new IllegalArgumentException(
+                    "Consultation, clinic, pet, veterinarian and type are required");
         }
         this.consultationId = consultationId;
+        this.clinicId = clinicId;
         this.petId = petId;
         this.requestedBy = requestedBy;
         this.type = type;
@@ -183,6 +191,10 @@ public class ClinicalExam extends AuditableAbstractAggregateRoot<ClinicalExam> {
 
     public Long getConsultationId() {
         return consultationId.clinicalConsultationId();
+    }
+
+    public Long getClinicId() {
+        return clinicId.clinicId();
     }
 
     public Long getPetId() {
