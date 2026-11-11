@@ -1,49 +1,32 @@
 package com.nexoshift.petcarehub.clinicalexams.interfaces.rest.controllers;
 
-import com.nexoshift.petcarehub.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import com.nexoshift.petcarehub.clinicalexams.domain.exceptions.ClinicalExamNotFoundException;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.CancelClinicalExamCommand;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.CompleteClinicalExamCommand;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.RegisterExamResultCommand;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.RequestClinicalExamCommand;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.StartClinicalExamCommand;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.UploadClinicalFileCommand;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.ValidateExamResultCommand;
+import com.nexoshift.petcarehub.clinicalexams.domain.model.commands.*;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamByIdQuery;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamsOfMyClinicQuery;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalFileContentQuery;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ExamStatus;
 import com.nexoshift.petcarehub.clinicalexams.domain.services.ClinicalExamCommandService;
 import com.nexoshift.petcarehub.clinicalexams.domain.services.ClinicalExamQueryService;
-import com.nexoshift.petcarehub.clinicalexams.interfaces.rest.resources.CancelClinicalExamResource;
-import com.nexoshift.petcarehub.clinicalexams.interfaces.rest.resources.ClinicalExamResource;
-import com.nexoshift.petcarehub.clinicalexams.interfaces.rest.resources.ClinicalFileResource;
-import com.nexoshift.petcarehub.clinicalexams.interfaces.rest.resources.RegisterExamResultResource;
-import com.nexoshift.petcarehub.clinicalexams.interfaces.rest.resources.RequestClinicalExamResource;
+import com.nexoshift.petcarehub.clinicalexams.interfaces.rest.resources.*;
 import com.nexoshift.petcarehub.clinicalexams.interfaces.rest.transform.ClinicalExamResourceFromEntityAssembler;
+import com.nexoshift.petcarehub.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.net.URI;
-import java.util.List;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.URI;
+import java.util.List;
 
 /**
  * Clinical exams. Writing requires ROLE_VETERINARIAN; reading is also open to the owner of the
