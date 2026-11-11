@@ -1,13 +1,9 @@
 package com.nexoshift.petcarehub.clinicalexams.domain.services;
 
 import com.nexoshift.petcarehub.clinicalexams.domain.model.aggregates.ClinicalExam;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamByIdQuery;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamsByConsultationIdQuery;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamsByPetIdAndStatusQuery;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamsByPetIdQuery;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalExamsOfMyClinicQuery;
-import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.GetClinicalFileContentQuery;
+import com.nexoshift.petcarehub.clinicalexams.domain.model.queries.*;
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.ClinicalFileContent;
+
 import java.util.List;
 import java.util.Optional;
 

@@ -23,7 +23,7 @@ class ClinicalExamTest {
   private static final StorageLocation LOCATION = new StorageLocation("bucket", "exams/1.png");
 
   private static ClinicalExam newExam() {
-    return new ClinicalExam(new ClinicalConsultationId(10L), new PetId(20L),
+    return new ClinicalExam(new ClinicalConsultationId(10L), new ClinicId(1L), new PetId(20L),
         new VeterinarianId(30L), ExamType.RADIOGRAPHY, "  Tórax lateral  ");
   }
 
@@ -36,7 +36,7 @@ class ClinicalExamTest {
   private static ClinicalExam examWithValidatedResult() {
     var exam = examInProcess();
     exam.registerResult("Sin hallazgos", "{}", "Normal", LocalDate.now());
-    exam.validateResult(new VeterinarianId(31L));
+    exam.validateResult(new com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.VeterinarianId(31L));
     return exam;
   }
 
@@ -59,6 +59,7 @@ class ClinicalExamTest {
     assertThat(exam.getIndication()).isEqualTo("Tórax lateral");
     assertThat(exam.getConsultationId()).isEqualTo(10L);
     assertThat(exam.getPetId()).isEqualTo(20L);
+    assertThat(exam.getClinicId()).isEqualTo(1L);
     assertThat(exam.getRequestedBy()).isEqualTo(30L);
     assertThat(exam.getRequestedAt()).isNotNull();
     assertThat(exam.getResult()).isEmpty();
@@ -68,21 +69,23 @@ class ClinicalExamTest {
 
   @Test
   void blankIndicationIsStoredAsNull() {
-    var exam = new ClinicalExam(new ClinicalConsultationId(1L), new PetId(1L),
+    var exam = new ClinicalExam(new ClinicalConsultationId(1L), new ClinicId(1L), new PetId(1L),
         new VeterinarianId(1L), ExamType.LABORATORY, "   ");
 
     assertThat(exam.getIndication()).isNull();
   }
 
   @Test
-  void requiresConsultationPetVeterinarianAndType() {
-    assertThatThrownBy(() -> new ClinicalExam(null, new PetId(1L), new VeterinarianId(1L),
-        ExamType.OTHER, null)).isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new ClinicalExam(new ClinicalConsultationId(1L), null,
+  void requiresConsultationClinicPetVeterinarianAndType() {
+    assertThatThrownBy(() -> new ClinicalExam(new ClinicalConsultationId(1L), null, new PetId(1L),
         new VeterinarianId(1L), ExamType.OTHER, null)).isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new ClinicalExam(new ClinicalConsultationId(1L), new PetId(1L),
+    assertThatThrownBy(() -> new ClinicalExam(null, new ClinicId(1L), new PetId(1L), new VeterinarianId(1L),
+        ExamType.OTHER, null)).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new ClinicalExam(new ClinicalConsultationId(1L), new ClinicId(1L), null,
+        new VeterinarianId(1L), ExamType.OTHER, null)).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new ClinicalExam(new ClinicalConsultationId(1L), new ClinicId(1L), new PetId(1L),
         null, ExamType.OTHER, null)).isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new ClinicalExam(new ClinicalConsultationId(1L), new PetId(1L),
+    assertThatThrownBy(() -> new ClinicalExam(new ClinicalConsultationId(1L), new ClinicId(1L), new PetId(1L),
         new VeterinarianId(1L), null, null)).isInstanceOf(IllegalArgumentException.class);
   }
 
