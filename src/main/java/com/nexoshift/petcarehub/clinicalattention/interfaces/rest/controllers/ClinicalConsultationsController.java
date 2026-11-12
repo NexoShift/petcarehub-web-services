@@ -8,21 +8,8 @@ import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.StartCli
 import com.nexoshift.petcarehub.clinicalattention.domain.model.queries.GetClinicalConsultationByIdQuery;
 import com.nexoshift.petcarehub.clinicalattention.domain.services.ClinicalConsultationCommandService;
 import com.nexoshift.petcarehub.clinicalattention.domain.services.ClinicalConsultationQueryService;
-import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.AddClinicalFindingResource;
-import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.CancelClinicalConsultationResource;
-import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.ClinicalConsultationResource;
-import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.CreateClinicalConsultationResource;
-import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.ReevaluateDiagnosisResource;
-import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.RegisterAnamnesisResource;
-import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.RegisterDiagnosisResource;
-import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.RegisterPhysiologicalAssessmentResource;
-import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.AddClinicalFindingCommandFromResourceAssembler;
-import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.ClinicalConsultationResourceFromEntityAssembler;
-import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.CreateClinicalConsultationCommandFromResourceAssembler;
-import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.ReevaluateDiagnosisCommandFromResourceAssembler;
-import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.RegisterAnamnesisCommandFromResourceAssembler;
-import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.RegisterDiagnosisCommandFromResourceAssembler;
-import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.RegisterPhysiologicalAssessmentCommandFromResourceAssembler;
+import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.*;
+import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.*;
 import com.nexoshift.petcarehub.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -131,6 +118,25 @@ public class ClinicalConsultationsController {
         RegisterDiagnosisCommandFromResourceAssembler.toCommandFromResource(
             consultationId, currentUser.getId(), resource)));
   }
+
+  @PostMapping("/{consultationId}/treatments")
+  @Operation(summary = "Register a treatment")
+  public ResponseEntity<ClinicalConsultationResource> registerTreatment(
+          @PathVariable Long consultationId, @Valid @RequestBody RegisterTreatmentResource resource,
+          @AuthenticationPrincipal UserDetailsImpl currentUser) {
+    return respond(HttpStatus.CREATED, commandService.handle(
+         RegisterTreatmentCommandFromResourceAssembler.toCommandFromResource(consultationId, currentUser.getId(), resource)));
+  }
+
+  @PostMapping("/{consultationId}/prescriptions")
+  @Operation(summary = "Register a prescription")
+  public ResponseEntity<ClinicalConsultationResource> registerPrescription(
+          @PathVariable Long consultationId, @Valid @RequestBody RegisterPrescriptionResource resource,
+          @AuthenticationPrincipal UserDetailsImpl currentUser) {
+    return respond(HttpStatus.CREATED, commandService.handle(
+            RegisterPresciptionCommandFromResourceAssembler.toCommandFromResource(consultationId,currentUser.getId(), resource)));
+  }
+
 
   @PostMapping("/{consultationId}/diagnoses/{diagnosisId}/reevaluations")
   @Operation(summary = "Reevaluate a diagnosis: creates a new one and keeps the previous one")
