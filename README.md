@@ -255,13 +255,13 @@ Quality attribute scenarios and the tactics applied are detailed in [docs/qualit
 
 ## Team
 
-| Member           | Responsibility                         |
+| Member           | Codigo                       |
 |------------------|----------------------------------------|
-| Giovany Torres   | IAM, AI Assistance                     |
-| Fabrizio Cutiri  | Profiles & Organization, file storage  |
-| Franco Lopez     | Clinical Attention (consultation)      |
-| Yair Aru         | Clinical Attention (treatments)        |
-| Joaquín Carranza | Clinical Exams, deployment             |
+| Giovany Torres   | u202311601                    |
+| Fabrizio Cutiri  | u201914181                    |
+| Franco Lopez     | u202315890                    |
+| Yair Aru         | u202125984                    |
+| Joaquín Carranza | u20191B935                    |
 
 ---
 
