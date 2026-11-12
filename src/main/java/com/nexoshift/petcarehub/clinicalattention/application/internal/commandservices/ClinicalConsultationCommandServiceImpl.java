@@ -5,15 +5,7 @@ import com.nexoshift.petcarehub.clinicalattention.domain.exceptions.ClinicalCons
 import com.nexoshift.petcarehub.clinicalattention.domain.exceptions.PetNotFoundException;
 import com.nexoshift.petcarehub.clinicalattention.domain.exceptions.VeterinarianNotAuthorizedException;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.aggregates.ClinicalConsultation;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.AddClinicalFindingCommand;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.CancelClinicalConsultationCommand;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.CompleteClinicalConsultationCommand;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.CreateClinicalConsultationCommand;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.ReevaluateDiagnosisCommand;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterAnamnesisCommand;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterDiagnosisCommand;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterPhysiologicalAssessmentCommand;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.StartClinicalConsultationCommand;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.*;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.valueobjects.ClinicId;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.valueobjects.ConsultingRoomId;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.valueobjects.PetId;
@@ -149,5 +141,23 @@ public class ClinicalConsultationCommandServiceImpl implements ClinicalConsultat
           "Only the veterinarian in charge can change this clinical consultation");
     }
     return consultation;
+  }
+
+  @Override
+  @Transactional
+  public Optional<ClinicalConsultation> handle(RegisterTreatmentCommand command) {
+    var consultation =
+            findAttendedConsultation(command.consultationId(), command.requesterUserId());
+    consultation.registerTreatment(command);
+    return Optional.of(consultationRepository.save(consultation));
+  }
+
+  @Override
+  @Transactional
+  public Optional<ClinicalConsultation> handle(RegisterPrescriptionCommand command) {
+    var consultation =
+            findAttendedConsultation(command.consultationId(), command.requesterUserId());
+    consultation.registerPrescription(command);
+    return Optional.of(consultationRepository.save(consultation));
   }
 }
