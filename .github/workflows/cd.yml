@@ -1,7 +1,11 @@
 name: CD
 
-# Deploys to Azure Container Apps when a release tag (v1.0.0, v1.1.0...) is pushed,
+# Builds the Docker image, pushes it to Azure Container Registry and deploys it
+# to Azure Container Apps when a release tag (v1.0.0, v1.0.1...) is pushed,
 # or manually from the Actions tab.
+#
+# The image is built on the GitHub runner with Docker (not with `az acr build`),
+# because Azure for Students subscriptions do not allow ACR Tasks.
 on:
   push:
     tags: ['v*.*.*']
@@ -34,27 +38,60 @@ jobs:
           chmod +x mvnw
           ./mvnw -B verify
 
+      - name: Resolve image version
+        id: version
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="sha-${GITHUB_SHA::7}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Image version: $VERSION" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Log in to Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.AZURE_ACR_NAME }}.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push image
+        run: |
+          IMAGE="${{ vars.AZURE_ACR_NAME }}.azurecr.io/$IMAGE_NAME"
+          docker build -t "$IMAGE:${{ steps.version.outputs.version }}" -t "$IMAGE:latest" .
+          docker push "$IMAGE:${{ steps.version.outputs.version }}"
+          docker push "$IMAGE:latest"
+
+      - name: Check Azure configuration
+        id: azure
+        env:
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+        run: |
+          if [ -z "$AZURE_CREDENTIALS" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::AZURE_CREDENTIALS is not set. Image pushed; update the Container App manually."
+            echo "Image pushed. Container App not updated: secret AZURE_CREDENTIALS missing. Update the image tag manually in the Azure portal." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Azure login
+        if: steps.azure.outputs.configured == 'true'
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Build and push image in Azure Container Registry
-        run: |
-          az acr build \
-            --registry "${{ vars.AZURE_ACR_NAME }}" \
-            --image "$IMAGE_NAME:${{ github.ref_name }}" \
-            --image "$IMAGE_NAME:latest" \
-            .
-
       - name: Update the Container App
+        if: steps.azure.outputs.configured == 'true'
         run: |
           az containerapp update \
             --name "${{ vars.AZURE_CONTAINER_APP }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --image "${{ vars.AZURE_ACR_NAME }}.azurecr.io/$IMAGE_NAME:${{ github.ref_name }}"
+            --image "${{ vars.AZURE_ACR_NAME }}.azurecr.io/$IMAGE_NAME:${{ steps.version.outputs.version }}"
 
       - name: Show the API URL
+        if: steps.azure.outputs.configured == 'true'
         run: |
           FQDN=$(az containerapp show \
             --name "${{ vars.AZURE_CONTAINER_APP }}" \
