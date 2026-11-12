@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.nexoshift</groupId>
     <artifactId>petcare</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <name>petcare-hub-platform</name>
     <description>petcare-hub-platform</description>
 

@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 - **Subscriptions**: plans for owners and clinics, and AI usage limits.
 - **AI Assistance**: LLM clinical assistant (SOAP draft) and plain-language explanations for owners.
 
+## [1.0.2] - 2026-11-12
+
+### Changed
+- CD pipeline builds the Docker image on the GitHub runner and pushes it to Azure Container Registry (ACR Tasks are not available on Azure for Students).
+
 ## [1.0.1] - 2026-11-12
 
 ### Fixed
@@ -68,5 +73,6 @@ First stable release, delivered at the end of **Sprint 1**.
 - Owners only see exam results after a veterinarian validates them.
 
 [Unreleased]: https://github.com/NexoShift/petcarehub-web-services/compare/v1.0.1...develop
+[1.0.2]: https://github.com/NexoShift/petcarehub-web-services/releases/tag/v1.0.2
 [1.0.1]: https://github.com/NexoShift/petcarehub-web-services/releases/tag/v1.0.1
 [1.0.0]: https://github.com/NexoShift/petcarehub-web-services/releases/tag/v1.0.0
