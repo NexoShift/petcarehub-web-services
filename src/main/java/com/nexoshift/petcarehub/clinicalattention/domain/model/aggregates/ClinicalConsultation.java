@@ -2,16 +2,8 @@ package com.nexoshift.petcarehub.clinicalattention.domain.model.aggregates;
 
 import com.nexoshift.petcarehub.clinicalattention.domain.exceptions.IncompleteConsultationException;
 import com.nexoshift.petcarehub.clinicalattention.domain.exceptions.InvalidConsultationStateException;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.AddClinicalFindingCommand;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.CreateClinicalConsultationCommand;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.ReevaluateDiagnosisCommand;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterAnamnesisCommand;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterDiagnosisCommand;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterPhysiologicalAssessmentCommand;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.entities.Anamnesis;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.entities.ClinicalFinding;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.entities.Diagnosis;
-import com.nexoshift.petcarehub.clinicalattention.domain.model.entities.PhysiologicalAssessment;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.*;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.entities.*;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.events.ClinicalConsultationCancelledEvent;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.events.ClinicalConsultationCompletedEvent;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.events.ClinicalConsultationCreatedEvent;
@@ -109,6 +101,18 @@ public class ClinicalConsultation extends AuditableAbstractAggregateRoot<Clinica
   @Fetch(FetchMode.SUBSELECT)
   private List<Diagnosis> diagnoses = new ArrayList<>();
 
+  @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+  @JoinColumn(name = "clinical_consultation_id", nullable = false, updatable = false)
+  @OrderBy("id ASC")
+  @Fetch(FetchMode.SUBSELECT)
+  private List<Treatment> treatments = new ArrayList<>();
+
+  @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+  @JoinColumn(name = "clinical_consultation_id", nullable = false, updatable = false)
+  @OrderBy("id ASC")
+  @Fetch(FetchMode.SUBSELECT)
+  private List<Prescription> prescriptions = new ArrayList<>();
+
   protected ClinicalConsultation() {
   }
 
@@ -193,6 +197,34 @@ public class ClinicalConsultation extends AuditableAbstractAggregateRoot<Clinica
         command.differentialDiagnoses(), command.rationale(), veterinarianId, null);
     diagnoses.add(diagnosis);
     return diagnosis;
+  }
+
+  public Treatment registerTreatment(RegisterTreatmentCommand command) {
+    requireStatus(ConsultationStatus.IN_PROGRESS, "register a treatment");
+    var treatment = new Treatment(command.description(), command.instruction(),
+            command.startDateTime(), command.endDateTime()
+    );
+    treatments.add(treatment);
+    return treatment;
+  }
+
+  public Prescription registerPrescription(RegisterPrescriptionCommand command) {
+    requireStatus(ConsultationStatus.IN_PROGRESS, "register a prescription");
+
+    List<Medication> medicationsEntities = command.medications().stream()
+            .map(med -> new Medication(
+                    med.name(),
+                    med.dosage(),
+                    med.frequency(),
+                    med.duration(),
+                    med.indication()
+            )).toList();
+
+    var prescription = new Prescription(command.dateAndTimeOfIssuance(),
+            command.generalInstruction(),medicationsEntities
+    );
+    prescriptions.add(prescription);
+    return prescription;
   }
 
   /**
