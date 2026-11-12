@@ -1,0 +1,753 @@
+@startuml
+title Diagrama de Clases - PetCare Hub
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+
+' =========================================================
+' 1. GESTIÓN DE IDENTIDAD Y ACCESO
+' =========================================================
+
+package "Gestión de Identidad y Acceso" {
+
+    class "Cuenta" as Cuenta <<Aggregate>> {
+        - id: Long
+        - estado: EstadoCuenta
+        - fechaHoraCreacion: LocalDateTime
+
+        + crearUsuario()
+        + eliminarUsuario()
+        + activar()
+        + desactivar()
+    }
+
+    class "Usuario" as Usuario <<Entidad>> {
+        - id: Long
+        - cuentaId: Long
+        - nombreUsuario: String
+        - contrasenaHash: String
+        - rolAcceso: RolAcceso
+        - activo: Boolean
+        - fechaHoraCreacion: LocalDateTime
+
+        + iniciarSesion()
+        + cambiarContrasena()
+        + activar()
+        + desactivar()
+    }
+
+    enum "EstadoCuenta" as EstadoCuenta {
+        ACTIVA
+        SUSPENDIDA
+        CANCELADA
+    }
+
+    enum "RolAcceso" as RolAcceso {
+        TITULAR
+        MIEMBRO
+    }
+
+    Cuenta "1" *-- "1..*" Usuario : contiene
+    Cuenta --> EstadoCuenta : tiene
+    Usuario --> RolAcceso : tiene
+}
+
+note right of Cuenta
+Una cuenta de dueño posee
+un único usuario TITULAR.
+
+Una cuenta de clínica posee
+un usuario TITULAR y puede
+incorporar usuarios MIEMBRO.
+end note
+
+
+' =========================================================
+' 2. PERFILES Y ORGANIZACIÓN
+' =========================================================
+
+package "Perfiles y Organización" {
+
+    class "DueñoMascota" as DuenoMascota <<Aggregate>> {
+        - id: Long
+        - cuentaId: Long
+        - nombres: String
+        - apellidos: String
+        - numeroTelefono: String
+
+        + registrarMascota()
+        + eliminarMascota()
+        + actualizarPerfil()
+    }
+
+    class "Mascota" as Mascota <<Aggregate>> {
+        - id: Long
+        - duenoId: Long
+        - nombre: String
+        - especie: Especie
+        - raza: String
+        - fechaNacimiento: LocalDate
+        - sexo: Sexo
+        - urlImagenPerfil: String
+
+        + actualizarPerfil()
+    }
+
+    class "Clínica" as Clinica <<Aggregate>> {
+        - id: Long
+        - cuentaId: Long
+        - nombre: String
+        - direccion: String
+        - numeroTelefono: String
+        - activa: Boolean
+
+        + actualizarPerfil()
+        + registrarVeterinario()
+        + retirarVeterinario()
+        + agregarConsultorio()
+        + eliminarConsultorio()
+    }
+
+    class "Veterinario" as Veterinario <<Aggregate>> {
+        - id: Long
+        - usuarioId: Long
+        - clinicaId: Long
+        - nombres: String
+        - apellidos: String
+        - numeroColegiatura: String
+        - especialidad: String
+
+        + actualizarPerfilProfesional()
+    }
+
+    class "Consultorio" as Consultorio <<Entidad>> {
+        - id: Long
+        - clinicaId: Long
+        - nombre: String
+        - descripcion: String
+        - activo: Boolean
+
+        + activar()
+        + desactivar()
+    }
+
+    enum "Especie" as Especie {
+        PERRO
+        GATO
+        OTRO
+    }
+
+    enum "Sexo" as Sexo {
+        MACHO
+        HEMBRA
+    }
+
+    DuenoMascota "1" --> "0..*" Mascota : posee
+
+    Clinica "1" --> "0..*" Veterinario : registra
+
+    Clinica "1" *-- "0..*" Consultorio : contiene
+
+    Mascota --> Especie : tiene
+    Mascota --> Sexo : tiene
+}
+
+
+' =========================================================
+' RELACIONES IAM - PERFILES
+' =========================================================
+
+Cuenta "1" --> "0..1" DuenoMascota : corresponde a
+Cuenta "1" --> "0..1" Clinica : corresponde a
+
+Usuario "1" --> "0..1" Veterinario : identifica
+
+note left of Cuenta
+Una Cuenta corresponde a un
+DueñoMascota o a una Clínica.
+
+No corresponde a ambos
+simultáneamente.
+end note
+
+note right of Veterinario
+El perfil Veterinario se relaciona
+con un Usuario miembro de la
+cuenta de una clínica.
+
+IAM únicamente administra
+cuentas, usuarios y acceso.
+end note
+
+
+' =========================================================
+' 3. ATENCIÓN CLÍNICA
+' =========================================================
+
+package "Atención Clínica" {
+
+    class "ConsultaClinica" as ConsultaClinica <<Aggregate>> {
+        - id: Long
+        - mascotaId: Long
+        - veterinarioId: Long
+        - clinicaId: Long
+        - consultorioId: Long
+        - motivoConsulta: String
+        - fechaHoraInicio: LocalDateTime
+        - fechaHoraFin: LocalDateTime
+        - estado: EstadoConsulta
+
+        + iniciar()
+        + registrarAnamnesis()
+        + registrarEvaluacionFisiologica()
+        + agregarHallazgo()
+        + agregarDiagnostico()
+        + agregarTratamiento()
+        + emitirReceta()
+        + finalizar()
+    }
+
+    class "Anamnesis" as Anamnesis <<Entidad>> {
+        - id: Long
+        - sintomas: String
+        - tiempoEvolucion: String
+        - alimentacion: String
+        - comportamiento: String
+        - observacionesDueno: String
+        - observacionesVeterinario: String
+
+        + actualizar()
+    }
+
+    class "EvaluacionFisiologica" as EvaluacionFisiologica <<Entidad>> {
+        - id: Long
+        - pesoKg: Double
+        - temperaturaCelsius: Double
+        - frecuenciaCardiaca: Integer
+        - frecuenciaRespiratoria: Integer
+        - estadoHidratacion: String
+        - observaciones: String
+        - fechaHoraRegistro: LocalDateTime
+
+        + actualizar()
+    }
+
+    class "HallazgoClinico" as HallazgoClinico <<Entidad>> {
+        - id: Long
+        - descripcion: String
+        - fechaHoraRegistro: LocalDateTime
+    }
+
+    class "Diagnostico" as Diagnostico <<Entidad>> {
+        - id: Long
+        - descripcion: String
+        - asistidoPorIA: Boolean
+        - fechaHoraRegistro: LocalDateTime
+    }
+
+    class "Tratamiento" as Tratamiento <<Entidad>> {
+        - id: Long
+        - descripcion: String
+        - indicaciones: String
+        - fechaHoraInicio: LocalDateTime
+        - fechaHoraFin: LocalDateTime
+    }
+
+    class "RecetaMedica" as RecetaMedica <<Entidad>> {
+        - id: Long
+        - fechaHoraEmision: LocalDateTime
+        - indicacionesGenerales: String
+
+        + agregarMedicamento()
+        + retirarMedicamento()
+    }
+
+    class "Medicamento" as Medicamento <<Entidad>> {
+        - id: Long
+        - nombre: String
+        - dosis: String
+        - frecuencia: String
+        - duracion: String
+        - indicaciones: String
+    }
+
+    enum "EstadoConsulta" as EstadoConsulta {
+        CREADA
+        EN_PROGRESO
+        COMPLETADA
+        CANCELADA
+    }
+
+    ConsultaClinica "1" *-- "0..1" Anamnesis : contiene
+
+    ConsultaClinica "1" *-- "0..*" EvaluacionFisiologica : registra
+
+    ConsultaClinica "1" *-- "0..*" HallazgoClinico : contiene
+
+    ConsultaClinica "1" *-- "0..*" Diagnostico : establece
+
+    ConsultaClinica "1" *-- "0..*" Tratamiento : indica
+
+    ConsultaClinica "1" *-- "0..*" RecetaMedica : emite
+
+    RecetaMedica "1" *-- "1..*" Medicamento : contiene
+
+    ConsultaClinica --> EstadoConsulta : tiene
+}
+
+Mascota "1" --> "0..*" ConsultaClinica : recibe
+
+Veterinario "1" --> "0..*" ConsultaClinica : realiza
+
+Clinica "1" --> "0..*" ConsultaClinica : atiende
+
+Consultorio "1" --> "0..*" ConsultaClinica : se realiza en
+
+
+' =========================================================
+' 4. HISTORIA CLÍNICA
+' =========================================================
+
+package "Historia Clínica" {
+
+    class "HistoriaClinica" as HistoriaClinica <<Aggregate>> {
+        - id: Long
+        - mascotaId: Long
+        - fechaHoraCreacion: LocalDateTime
+
+        + obtenerConsultas()
+        + registrarAlergia()
+        + actualizarAlergia()
+        + registrarVacunacion()
+    }
+
+    class "Alergia" as Alergia <<Entidad>> {
+        - id: Long
+        - sustancia: String
+        - descripcion: String
+        - severidad: SeveridadAlergia
+        - fechaDeteccion: LocalDate
+        - activa: Boolean
+
+        + actualizar()
+        + marcarComoInactiva()
+    }
+
+    class "RegistroVacunacion" as RegistroVacunacion <<Entidad>> {
+        - id: Long
+        - nombreVacuna: String
+        - fechaAplicacion: LocalDate
+        - fechaProximaDosis: LocalDate
+        - numeroLote: String
+        - observaciones: String
+
+        + actualizar()
+    }
+
+    enum "SeveridadAlergia" as SeveridadAlergia {
+        LEVE
+        MODERADA
+        SEVERA
+    }
+
+    HistoriaClinica "1" *-- "0..*" Alergia : registra
+
+    HistoriaClinica "1" *-- "0..*" RegistroVacunacion : registra
+
+    Alergia --> SeveridadAlergia : tiene
+}
+
+Mascota "1" --> "1" HistoriaClinica : posee
+
+HistoriaClinica "1" --> "0..*" ConsultaClinica : reúne consultas completadas
+
+note right of HistoriaClinica
+La Historia Clínica se organiza
+principalmente a partir de las
+consultas clínicas finalizadas.
+
+Además mantiene información
+longitudinal específica como
+alergias y vacunaciones.
+
+Diagnósticos, tratamientos,
+recetas y resultados se obtienen
+desde las consultas.
+end note
+
+
+' =========================================================
+' 5. EXÁMENES CLÍNICOS
+' =========================================================
+
+package "Exámenes Clínicos" {
+
+    class "ExamenClinico" as ExamenClinico <<Aggregate>> {
+        - id: Long
+        - mascotaId: Long
+        - veterinarioId: Long
+        - consultaId: Long
+        - tipo: TipoExamen
+        - estado: EstadoExamen
+        - fechaHoraSolicitud: LocalDateTime
+
+        + solicitar()
+        + iniciarProcesamiento()
+        + registrarResultado()
+        + completar()
+    }
+
+    class "ResultadoExamen" as ResultadoExamen <<Entidad>> {
+        - id: Long
+        - descripcion: String
+        - fechaHoraEmision: LocalDateTime
+
+        + agregarArchivo()
+    }
+
+    class "ArchivoClinico" as ArchivoClinico <<Entidad>> {
+        - id: Long
+        - tipo: TipoArchivoClinico
+        - urlArchivo: String
+        - tipoMime: String
+        - fechaHoraCarga: LocalDateTime
+    }
+
+    enum "TipoExamen" as TipoExamen {
+        RADIOGRAFIA
+        ECOGRAFIA
+        LABORATORIO
+        OTRO
+    }
+
+    enum "EstadoExamen" as EstadoExamen {
+        SOLICITADO
+        EN_PROCESO
+        COMPLETADO
+        CANCELADO
+    }
+
+    enum "TipoArchivoClinico" as TipoArchivoClinico {
+        IMAGEN
+        VIDEO
+        DOCUMENTO
+    }
+
+    ExamenClinico "1" *-- "0..1" ResultadoExamen : produce
+
+    ResultadoExamen "1" *-- "0..*" ArchivoClinico : contiene
+
+    ExamenClinico --> TipoExamen : tiene
+
+    ExamenClinico --> EstadoExamen : tiene
+
+    ArchivoClinico --> TipoArchivoClinico : tiene
+}
+
+ConsultaClinica "1" --> "0..*" ExamenClinico : solicita
+
+Mascota "1" --> "0..*" ExamenClinico : se somete a
+
+Veterinario "1" --> "0..*" ExamenClinico : solicita
+
+
+' =========================================================
+' 6. ASISTENCIA CON INTELIGENCIA ARTIFICIAL
+' =========================================================
+
+package "Asistencia con Inteligencia Artificial" {
+
+    class "AnalisisVisionComputacional" as AnalisisVisionComputacional <<Aggregate>> {
+        - id: Long
+        - examenId: Long
+        - archivoClinicoId: Long
+        - solicitanteId: Long
+        - estado: EstadoAnalisisIA
+        - fechaHoraSolicitud: LocalDateTime
+        - fechaHoraFinalizacion: LocalDateTime
+
+        + solicitarAnalisis()
+        + completar()
+        + marcarComoFallido()
+    }
+
+    class "HallazgoVisionComputacional" as HallazgoVisionComputacional <<Entidad>> {
+        - id: Long
+        - etiqueta: String
+        - confianza: Double
+        - descripcion: String
+    }
+
+    class "AsistenciaLLMClinica" as AsistenciaLLMClinica <<Aggregate>> {
+        - id: Long
+        - consultaId: Long
+        - veterinarioId: Long
+        - contenidoGenerado: String
+        - estado: EstadoAnalisisIA
+        - fechaHoraGeneracion: LocalDateTime
+
+        + generar()
+        + regenerar()
+    }
+
+    class "ContextoClinicoLLM" as ContextoClinicoLLM <<Objeto de Valor>> {
+        - consultasPreviasIds: List<Long>
+        - alergiasIds: List<Long>
+        - vacunacionesIds: List<Long>
+        - resultadosExamenIds: List<Long>
+        - analisisVisionIds: List<Long>
+    }
+
+    class "ExplicacionParaDueno" as ExplicacionParaDueno <<Aggregate>> {
+        - id: Long
+        - consultaId: Long
+        - duenoId: Long
+        - contenidoGenerado: String
+        - fechaHoraGeneracion: LocalDateTime
+
+        + generar()
+    }
+
+    enum "EstadoAnalisisIA" as EstadoAnalisisIA {
+        PENDIENTE
+        PROCESANDO
+        COMPLETADO
+        FALLIDO
+    }
+
+    AnalisisVisionComputacional "1" *-- "0..*" HallazgoVisionComputacional : genera
+
+    AsistenciaLLMClinica "1" *-- "1" ContextoClinicoLLM : utiliza
+
+    AnalisisVisionComputacional --> EstadoAnalisisIA : tiene
+
+    AsistenciaLLMClinica --> EstadoAnalisisIA : tiene
+}
+
+
+' =========================================================
+' RELACIONES DE VISIÓN COMPUTACIONAL
+' =========================================================
+
+ArchivoClinico "1" --> "0..*" AnalisisVisionComputacional : es analizado por
+
+ExamenClinico "1" --> "0..*" AnalisisVisionComputacional : sirve como fuente
+
+
+' =========================================================
+' RELACIONES DEL LLM
+' =========================================================
+
+ConsultaClinica "1" --> "0..*" AsistenciaLLMClinica : recibe asistencia de
+
+ConsultaClinica "1" --> "0..*" ExplicacionParaDueno : genera
+
+
+ContextoClinicoLLM ..> ConsultaClinica : referencia consultas previas
+
+ContextoClinicoLLM ..> Alergia : referencia alergias
+
+ContextoClinicoLLM ..> RegistroVacunacion : referencia vacunaciones
+
+ContextoClinicoLLM ..> ResultadoExamen : referencia resultados
+
+ContextoClinicoLLM ..> AnalisisVisionComputacional : referencia análisis
+
+
+AsistenciaLLMClinica ..> Diagnostico : propone
+
+AsistenciaLLMClinica ..> Tratamiento : propone
+
+
+note right of ContextoClinicoLLM
+Solo contiene referencias a la
+información seleccionada como
+contexto para una interacción
+específica con el LLM.
+
+No se envía necesariamente toda
+la Historia Clínica.
+end note
+
+note right of AsistenciaLLMClinica
+La respuesta del LLM constituye
+una propuesta clínica.
+
+El veterinario debe revisarla
+antes de incorporarla como
+diagnóstico o tratamiento oficial.
+end note
+
+
+' =========================================================
+' 7. PAGOS Y SUSCRIPCIONES
+' =========================================================
+
+package "Pagos y Suscripciones" {
+
+    class "Plan" as Plan <<Aggregate>> {
+        - id: Long
+        - nombre: String
+        - descripcion: String
+        - tipo: TipoPlan
+        - precio: BigDecimal
+        - periodoFacturacion: PeriodoFacturacion
+        - maximoMascotas: Integer
+        - maximoVeterinarios: Integer
+        - maximoConsultorios: Integer
+        - maximoUsosVisionComputacional: Integer
+        - maximoUsosLLM: Integer
+        - activo: Boolean
+
+        + permiteRegistrarMascota()
+        + permiteRegistrarVeterinario()
+        + permiteRegistrarConsultorio()
+    }
+
+    class "Suscripcion" as Suscripcion <<Aggregate>> {
+        - id: Long
+        - cuentaId: Long
+        - planId: Long
+        - estado: EstadoSuscripcion
+        - fechaHoraInicio: LocalDateTime
+        - fechaHoraVencimiento: LocalDateTime
+
+        + activar()
+        + renovar()
+        + cancelar()
+        + cambiarPlan()
+        + puedeRegistrarMascota()
+        + puedeRegistrarVeterinario()
+        + puedeRegistrarConsultorio()
+        + puedeUsarVisionComputacional()
+        + puedeUsarLLM()
+    }
+
+    class "ContadorUsoIA" as ContadorUsoIA <<Entidad>> {
+        - id: Long
+        - tipoServicio: TipoServicioIA
+        - usosRealizados: Integer
+        - limiteUsos: Integer
+        - fechaHoraInicioPeriodo: LocalDateTime
+        - fechaHoraFinPeriodo: LocalDateTime
+
+        + incrementar()
+        + tieneUsosDisponibles()
+        + reiniciar()
+    }
+
+    class "Pago" as Pago <<Aggregate>> {
+        - id: Long
+        - suscripcionId: Long
+        - monto: BigDecimal
+        - estado: EstadoPago
+        - fechaHoraCreacion: LocalDateTime
+        - fechaHoraPago: LocalDateTime
+
+        + procesar()
+        + confirmar()
+        + rechazar()
+    }
+
+    enum "TipoPlan" as TipoPlan {
+        DUENO_BASICO
+        DUENO_PREMIUM
+        CLINICA_BASICO
+        CLINICA_PREMIUM
+    }
+
+    enum "PeriodoFacturacion" as PeriodoFacturacion {
+        MENSUAL
+        ANUAL
+    }
+
+    enum "EstadoSuscripcion" as EstadoSuscripcion {
+        ACTIVA
+        VENCIDA
+        CANCELADA
+        PENDIENTE
+    }
+
+    enum "TipoServicioIA" as TipoServicioIA {
+        VISION_COMPUTACIONAL
+        LLM
+    }
+
+    enum "EstadoPago" as EstadoPago {
+        PENDIENTE
+        PAGADO
+        RECHAZADO
+        REEMBOLSADO
+    }
+
+    Plan --> TipoPlan : tiene
+
+    Plan --> PeriodoFacturacion : tiene
+
+    Suscripcion --> Plan : utiliza
+
+    Suscripcion --> EstadoSuscripcion : tiene
+
+    Suscripcion "1" *-- "2" ContadorUsoIA : mantiene
+
+    Suscripcion "1" --> "0..*" Pago : genera
+
+    ContadorUsoIA --> TipoServicioIA : corresponde a
+
+    Pago --> EstadoPago : tiene
+}
+
+
+' =========================================================
+' RELACIÓN CUENTA - SUSCRIPCIÓN
+' =========================================================
+
+Cuenta "1" --> "0..1" Suscripcion : mantiene
+
+
+' =========================================================
+' CONSUMO DE SERVICIOS DE IA
+' =========================================================
+
+AnalisisVisionComputacional ..> Suscripcion : consume uso de visión computacional
+
+AsistenciaLLMClinica ..> Suscripcion : consume uso de LLM
+
+ExplicacionParaDueno ..> Suscripcion : consume uso de LLM
+
+
+note right of Suscripcion
+La suscripción pertenece a la Cuenta.
+
+Los límites de Visión Computacional
+y LLM se gestionan de manera
+independiente.
+end note
+
+
+' =========================================================
+' ACLARACIÓN SOBRE HISTORIA CLÍNICA
+' =========================================================
+
+note bottom of HistoriaClinica
+Las pestañas como:
+
+- Consultas
+- Diagnósticos
+- Tratamientos
+- Recetas
+- Exámenes
+- Alergias
+- Vacunas
+
+son vistas de interfaz.
+
+Diagnósticos, tratamientos, recetas
+y exámenes se obtienen a partir de
+las consultas clínicas y no se
+duplican dentro de HistoriaClinica.
+end note
+
+@enduml
