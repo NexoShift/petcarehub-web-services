@@ -2,8 +2,8 @@
 
 PetCare Hub Platform is a RESTful API built on the foundations of Domain-Driven Design (DDD). Developed with Java 25, Spring Boot 4.1.2, and MySQL, the platform supports veterinary clinics and pet owners with a longitudinal, pet-centered clinical record: consultations, clinical exams, and AI-assisted image analysis. It features a modular monolith organized into bounded contexts and applies Command Query Responsibility Segregation (CQRS) principles, keeping a clean separation between data modification and retrieval operations.
 
----
 
+---
 ## Tech Stack
 
 - **Language:** Java 25 (LTS)
@@ -218,25 +218,64 @@ All endpoints live under `/api/v1` and, except authentication, require `Authoriz
 
 ---
 
+## Architecture Decisions
+
+The main decisions are recorded as ADRs in [docs/adrs.md](docs/adrs.md):
+
+| ADR | Decision |
+|-----|----------|
+| [001](docs/adrs.md#adr-001-modular-monolith-instead-of-microservices) | Modular monolith instead of microservices |
+| [002](docs/adrs.md#adr-002-layered-domain-driven-design-per-bounded-context) | Layered DDD per bounded context |
+| [003](docs/adrs.md#adr-003-lightweight-cqrs-with-a-single-database) | Lightweight CQRS with a single database |
+| [004](docs/adrs.md#adr-004-bounded-context-integration-through-acl-facades) | Context integration through ACL facades |
+| [005](docs/adrs.md#adr-005-separate-iam-credentials-from-profiles-data) | IAM credentials separated from Profiles data |
+| [006](docs/adrs.md#adr-006-stateless-authentication-with-jwt-and-bcrypt) | Stateless authentication with JWT and BCrypt |
+| [007](docs/adrs.md#adr-007-mysql-as-the-relational-database) | MySQL as the relational database |
+| [008](docs/adrs.md#adr-008-pluggable-file-storage-local-or-amazon-s3) | Pluggable file storage (local / S3) |
+| [009](docs/adrs.md#adr-009-roboflow-for-computer-vision-with-one-model-per-image-type) | Roboflow with one model per image type |
+| [010](docs/adrs.md#adr-010-ai-supports-the-veterinarian-and-never-diagnoses) | AI supports the veterinarian and never diagnoses |
+| [011](docs/adrs.md#adr-011-immutable-clinical-records) | Immutable clinical records |
+| [012](docs/adrs.md#adr-012-docker-and-azure-container-apps-with-github-actions) | Docker, Azure Container Apps and GitHub Actions |
+| [013](docs/adrs.md#adr-013-git-flow-conventional-commits-and-semantic-versioning) | Git Flow, Conventional Commits and SemVer |
+
+---
+
+## Quality Attributes
+
+Quality attribute scenarios and the tactics applied are detailed in [docs/quality-attributes.md](docs/quality-attributes.md):
+
+| Attribute | Scenario | Response measure | Status |
+|-----------|----------|------------------|--------|
+| Performance | LLM clinical assistance | 95 % of responses in ≤ 10 s | 🕓 Sprint 2 |
+| Availability | AI provider failure | Core clinical features available in 100 % of isolated AI failures | ✅ |
+| Security | Unauthorized access | 100 % of unauthorized requests rejected | ✅ |
+| Integrity | Clinical re-evaluations | 100 % of re-evaluations keep the original record | ✅ |
+
+---
+
 ## Team
 
-| Member           | Codigo                       |
+| Member           | Responsibility                         |
 |------------------|----------------------------------------|
-| Giovany Torres   | u202311601                    |
-| Fabrizio Cutiri  | u201914181                    |
-| Franco Lopez     | u202315890                    |
-| Yair Aru         | u202125984                    |
-| Joaquín Carranza | u20191B935                    |
+| Giovany Torres   | IAM, AI Assistance                     |
+| Fabrizio Cutiri  | Profiles & Organization, file storage  |
+| Franco Lopez     | Clinical Attention (consultation)      |
+| Yair Aru         | Clinical Attention (treatments)        |
+| Joaquín Carranza | Clinical Exams, deployment             |
 
 ---
 
 ## Documentation
 
-Refer to the project root for additional information:
-- [Contributing Guide](CONTRIBUTING.md)
-- [Dockerfile](Dockerfile) and [GitHub Actions workflows](.github/workflows/)
-- [Changelog](CHANGELOG.md)
-- Interactive API reference in Swagger UI
+| Document | Description |
+|----------|-------------|
+| [Architecture Decision Records](docs/adrs.md) | Main architectural decisions with context, alternatives and consequences |
+| [Quality Attributes](docs/quality-attributes.md) | Quality attribute scenarios, tactics and status |
+| [Class Diagram (PlantUML)](docs/class-diagram.puml) | Domain classes of the bounded contexts |
+| [Software Architecture (Structurizr DSL)](docs/software-architecture.dsl) | C4 model: context, containers and components |
+| [Contributing Guide](CONTRIBUTING.md) | Branching model, commit convention and pull request rules |
+| [Changelog](CHANGELOG.md) | Release history |
+| [Web client](https://github.com/NexoShift/petcarehub-web-application) | Angular application that consumes this API |
 
 ---
 
