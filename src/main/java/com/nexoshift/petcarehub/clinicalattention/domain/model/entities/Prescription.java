@@ -2,6 +2,7 @@ package com.nexoshift.petcarehub.clinicalattention.domain.model.entities;
 
 import com.nexoshift.petcarehub.clinicalattention.domain.exceptions.InvalidConsultationStateException;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.valueobjects.ClinicalFieldLimits;
+import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.RegisterMedicationResource;
 import com.nexoshift.petcarehub.shared.domain.model.entities.AuditableModel;
 import jakarta.persistence.*;
 
