@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Local clinical files ###
+uploads/
+
+### LocaL environments ###
+.env.docker
