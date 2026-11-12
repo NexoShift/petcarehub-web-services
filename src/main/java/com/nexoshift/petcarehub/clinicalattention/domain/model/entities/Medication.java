@@ -19,7 +19,7 @@ public class Medication extends AuditableModel {
     @Column(nullable = false, length = ClinicalFieldLimits.MEDICATION_DURATION)
     private String duration;
 
-    @Column(length = ClinicalFieldLimits.MEDICATION_INDICATIONS)
+    @Column(nullable = false, length = ClinicalFieldLimits.MEDICATION_INDICATIONS)
     private String indication;
 
     protected Medication() {
@@ -37,6 +37,9 @@ public class Medication extends AuditableModel {
         }
         if (duration == null || duration.isBlank()) {
             throw new IllegalArgumentException("Medication duration is required");
+        }
+        if (duration == null || indication.isBlank()) {
+            throw new IllegalArgumentException("Medication indication is required");
         }
 
         this.name = name;
