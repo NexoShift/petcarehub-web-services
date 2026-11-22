@@ -1,5 +1,7 @@
 package com.nexoshift.petcarehub.subscriptions.domain.model.valueobjects;
 
+import com.nexoshift.petcarehub.subscriptions.domain.exceptions.RegistrationLimitExceededException;
+import com.nexoshift.petcarehub.subscriptions.domain.exceptions.RegistrationNotIncludedInPlanException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 
@@ -76,5 +78,47 @@ public class PlanLimits {
 
     public Integer getMonthlyLlmCredits() {
         return monthlyLlmCredits;
+    }
+
+    public void ensurePetRegistrationAllowed(long registeredPets) {
+        ensureRegistrationAllowed(
+                "pets",
+                registeredPets,
+                getMaxPets()
+        );
+    }
+
+    public void ensureVeterinarianRegistrationAllowed(
+            long registeredVeterinarians) {
+
+        ensureRegistrationAllowed(
+                "veterinarians",
+                registeredVeterinarians,
+                getMaxVeterinarians()
+        );
+    }
+
+    private void ensureRegistrationAllowed(
+            String resource,
+            long registered,
+            Integer limit) {
+
+        if (registered < 0) {
+            throw new IllegalArgumentException(
+                    "The number of registered resources cannot be negative."
+            );
+        }
+
+        if (limit == null || limit == 0) {
+            throw new RegistrationNotIncludedInPlanException(resource);
+        }
+
+        if (registered >= limit) {
+            throw new RegistrationLimitExceededException(
+                    resource,
+                    registered,
+                    limit
+            );
+        }
     }
 }
