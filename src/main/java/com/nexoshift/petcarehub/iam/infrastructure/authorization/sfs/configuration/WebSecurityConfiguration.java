@@ -66,6 +66,7 @@ public class WebSecurityConfiguration {
         .authorizeHttpRequests(authorize -> authorize
             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
             .requestMatchers(PUBLIC_ROUTES).permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/subscriptions/webhooks/stripe").permitAll()
             .anyRequest().authenticated())
         .addFilterBefore(new BearerAuthorizationRequestFilter(tokenService, userDetailsService),
             UsernamePasswordAuthenticationFilter.class);
