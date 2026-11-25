@@ -197,6 +197,7 @@ All endpoints live under `/api/v1` and, except authentication, require `Authoriz
 ### Clinical Attention
 - `/api/v1/clinical-consultations`: Consultation lifecycle (`start`, `complete`, `cancel`).
 - `/api/v1/clinical-consultations/{consultationId}/anamnesis`, `/physiological-assessments`, `/findings`, `/diagnoses`, `/diagnoses/{diagnosisId}/reevaluations`: Clinical records of a consultation.
+- `POST /api/v1/clinical-consultations/{consultationId}/treatments` · `/prescriptions`: Treatments and prescriptions (1 to 15 medications) of a consultation in progress.
 - `GET /api/v1/pets/{petId}/clinical-consultations`: Consultations of a pet.
 
 ### Clinical Exams
