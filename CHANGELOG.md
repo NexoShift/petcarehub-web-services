@@ -7,11 +7,31 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## [Unreleased]
 
-### Planned
-- **Medical History**: longitudinal clinical record per pet, allergies and vaccinations.
-- **Clinical Attention**: treatments, prescriptions and medications.
-- **Subscriptions**: plans for owners and clinics, and AI usage limits.
-- **AI Assistance**: LLM clinical assistant (SOAP draft) and plain-language explanations for owners.
+## [1.1.0] - 2026-11-25
+
+### Added
+- **Subscriptions**
+    - Plans for pet owners and clinics (`PET_OWNER_BASIC`, `PET_OWNER_PREMIUM`, `CLINIC_BASIC`, `CLINIC_PREMIUM`).
+    - Subscriptions per account with Stripe checkout, webhook synchronization, payment history and invoices.
+    - Scheduled cancellation and reactivation.
+    - Plan entitlements, registration limits and monthly AI credits with reservations.
+
+- **Tests**
+    - Stripe webhook signatures verified with the real Stripe library (wrong secret, tampered body, replayed signature).
+    - Payment flow with Stripe test doubles: checkout, `checkout.session.completed` → `ACTIVE`, duplicated events, `PAST_DUE`, wrong plan and cancellation.
+    - Startup validation of the Stripe settings.
+    - Opt-in live tests against Stripe test mode, enabled only when `STRIPE_SECRET_KEY` starts with `sk_test_`.
+- **CI**
+    - The test job passes the Stripe test-mode keys from the repository secrets to the live tests when they are configured.
+
+### Changed
+- `GET /api/v1/plans` is public.
+- The API validates the `STRIPE_*` variables at startup and does not start if one is missing or malformed, naming each problem.
+- Stripe checkout returns to the frontend (`/subscription?checkout=success|cancelled`) by default.
+
+### Removed
+- Empty checkout controller and resource of Subscriptions.
+- Test suite with 345 tests on an in-memory H2 database.
 
 ## [1.0.2] - 2026-11-12
 
@@ -72,7 +92,8 @@ First stable release, delivered at the end of **Sprint 1**.
 - Access rules between contexts: a veterinarian only works with patients of their clinic, and an owner only sees their own pets.
 - Owners only see exam results after a veterinarian validates them.
 
-[Unreleased]: https://github.com/NexoShift/petcarehub-web-services/compare/v1.0.1...develop
+[Unreleased]: https://github.com/NexoShift/petcarehub-web-services/compare/v1.1.0...develop
+[1.1.0]: https://github.com/NexoShift/petcarehub-web-services/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/NexoShift/petcarehub-web-services/releases/tag/v1.0.2
 [1.0.1]: https://github.com/NexoShift/petcarehub-web-services/releases/tag/v1.0.1
 [1.0.0]: https://github.com/NexoShift/petcarehub-web-services/releases/tag/v1.0.0
