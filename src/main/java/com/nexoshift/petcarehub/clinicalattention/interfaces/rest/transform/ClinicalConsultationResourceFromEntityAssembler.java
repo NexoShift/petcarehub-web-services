@@ -37,6 +37,10 @@ public final class ClinicalConsultationResourceFromEntityAssembler {
             .map(ClinicalConsultationResourceFromEntityAssembler::toResource).toList(),
         consultation.getDiagnoses().stream()
             .map(DiagnosisResourceFromEntityAssembler::toResourceFromEntity).toList(),
+        consultation.getTreatments().stream()
+            .map(TreatmentResourceFromEntityAssembler::toResourceFromEntity).toList(),
+        consultation.getPrescriptions().stream()
+            .map(PrescriptionResourceFromEntityAssembler::toResourceFromEntity).toList(),
         consultation.getCreatedAt(),
         consultation.getUpdatedAt());
   }

@@ -8,10 +8,15 @@ import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.Reevalua
 import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterAnamnesisCommand;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterDiagnosisCommand;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterPhysiologicalAssessmentCommand;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterPrescriptionCommand;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterTreatmentCommand;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.entities.Anamnesis;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.entities.ClinicalFinding;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.entities.Diagnosis;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.entities.Medication;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.entities.PhysiologicalAssessment;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.entities.Prescription;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.entities.Treatment;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.events.ClinicalConsultationCancelledEvent;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.events.ClinicalConsultationCompletedEvent;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.events.ClinicalConsultationCreatedEvent;
@@ -62,7 +67,7 @@ public class ClinicalConsultation extends AuditableAbstractAggregateRoot<Clinica
 
   @Embedded
   @AttributeOverride(name = "veterinarianId",
-      column = @Column(name = "veterinarian_id", nullable = false))
+          column = @Column(name = "veterinarian_id", nullable = false))
   private VeterinarianId veterinarianId;
 
   @Embedded
@@ -109,12 +114,24 @@ public class ClinicalConsultation extends AuditableAbstractAggregateRoot<Clinica
   @Fetch(FetchMode.SUBSELECT)
   private List<Diagnosis> diagnoses = new ArrayList<>();
 
+  @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+  @JoinColumn(name = "clinical_consultation_id", nullable = false, updatable = false)
+  @OrderBy("id ASC")
+  @Fetch(FetchMode.SUBSELECT)
+  private List<Treatment> treatments = new ArrayList<>();
+
+  @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+  @JoinColumn(name = "clinical_consultation_id", nullable = false, updatable = false)
+  @OrderBy("id ASC")
+  @Fetch(FetchMode.SUBSELECT)
+  private List<Prescription> prescriptions = new ArrayList<>();
+
   protected ClinicalConsultation() {
   }
 
   /** Creates a consultation in CREATED status for the veterinarian in charge. */
   public ClinicalConsultation(
-      CreateClinicalConsultationCommand command, VeterinarianId veterinarianId) {
+          CreateClinicalConsultationCommand command, VeterinarianId veterinarianId) {
     if (veterinarianId == null) {
       throw new IllegalArgumentException("Veterinarian id is required");
     }
@@ -122,8 +139,8 @@ public class ClinicalConsultation extends AuditableAbstractAggregateRoot<Clinica
     this.veterinarianId = veterinarianId;
     this.clinicId = new ClinicId(command.clinicId());
     this.consultingRoomId = command.consultingRoomId() == null
-        ? null
-        : new ConsultingRoomId(command.consultingRoomId());
+            ? null
+            : new ConsultingRoomId(command.consultingRoomId());
     this.reason = command.reason();
     this.status = ConsultationStatus.CREATED;
   }
@@ -131,7 +148,7 @@ public class ClinicalConsultation extends AuditableAbstractAggregateRoot<Clinica
   /** Registers the creation event. Call it after the first save, when the id exists. */
   public void notifyCreated() {
     registerEvent(new ClinicalConsultationCreatedEvent(
-        getId(), petId.petId(), veterinarianId.veterinarianId(), Instant.now()));
+            getId(), petId.petId(), veterinarianId.veterinarianId(), Instant.now()));
   }
 
   /** CREATED to IN_PROGRESS: the veterinarian starts the attention. */
@@ -146,26 +163,26 @@ public class ClinicalConsultation extends AuditableAbstractAggregateRoot<Clinica
     requireStatus(ConsultationStatus.IN_PROGRESS, "register the anamnesis");
     if (anamnesis != null) {
       throw new InvalidConsultationStateException(
-          "The anamnesis of this clinical consultation was already registered");
+              "The anamnesis of this clinical consultation was already registered");
     }
     anamnesis = new Anamnesis(command.chiefComplaint(), command.evolutionTime(),
-        command.symptoms(), command.diet(), command.behavior(), command.previousTreatments(),
-        command.ownerObservations());
+            command.symptoms(), command.diet(), command.behavior(), command.previousTreatments(),
+            command.ownerObservations());
     return anamnesis;
   }
 
   /** Registers a new measurement. Earlier measurements are kept. */
   public PhysiologicalAssessment registerPhysiologicalAssessment(
-      RegisterPhysiologicalAssessmentCommand command) {
+          RegisterPhysiologicalAssessmentCommand command) {
     requireStatus(ConsultationStatus.IN_PROGRESS, "register a physiological assessment");
     var vitalSigns = new VitalSigns(command.weightKg(), command.temperatureCelsius(),
-        command.heartRateBpm(), command.respiratoryRateBpm());
+            command.heartRateBpm(), command.respiratoryRateBpm());
     var bodyConditionScore = command.bodyConditionScore() == null
-        ? null
-        : new BodyConditionScore(command.bodyConditionScore());
+            ? null
+            : new BodyConditionScore(command.bodyConditionScore());
     var assessment = new PhysiologicalAssessment(vitalSigns, bodyConditionScore,
-        command.hydrationStatus(), command.mucousMembranes(),
-        command.capillaryRefillTimeSeconds(), command.observations());
+            command.hydrationStatus(), command.mucousMembranes(),
+            command.capillaryRefillTimeSeconds(), command.observations());
     physiologicalAssessments.add(assessment);
     return assessment;
   }
@@ -174,7 +191,7 @@ public class ClinicalConsultation extends AuditableAbstractAggregateRoot<Clinica
   public ClinicalFinding addClinicalFinding(AddClinicalFindingCommand command) {
     requireStatus(ConsultationStatus.IN_PROGRESS, "add a clinical finding");
     var finding = new ClinicalFinding(
-        command.bodySystem(), command.description(), command.severity());
+            command.bodySystem(), command.description(), command.severity());
     clinicalFindings.add(finding);
     return finding;
   }
@@ -187,10 +204,10 @@ public class ClinicalConsultation extends AuditableAbstractAggregateRoot<Clinica
     requireStatus(ConsultationStatus.IN_PROGRESS, "register a diagnosis");
     if (command.primary() && currentPrimaryDiagnosis().isPresent()) {
       throw new InvalidConsultationStateException(
-          "The clinical consultation already has a current primary diagnosis; reevaluate it");
+              "The clinical consultation already has a current primary diagnosis; reevaluate it");
     }
     var diagnosis = new Diagnosis(command.description(), command.type(), command.primary(),
-        command.differentialDiagnoses(), command.rationale(), veterinarianId, null);
+            command.differentialDiagnoses(), command.rationale(), veterinarianId, null);
     diagnoses.add(diagnosis);
     return diagnosis;
   }
@@ -202,18 +219,40 @@ public class ClinicalConsultation extends AuditableAbstractAggregateRoot<Clinica
   public Diagnosis reevaluateDiagnosis(ReevaluateDiagnosisCommand command) {
     requireStatus(ConsultationStatus.IN_PROGRESS, "reevaluate a diagnosis");
     var previous = diagnoses.stream()
-        .filter(diagnosis -> command.previousDiagnosisId().equals(diagnosis.getId()))
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException(
-            "The diagnosis to reevaluate does not belong to this clinical consultation"));
+            .filter(diagnosis -> command.previousDiagnosisId().equals(diagnosis.getId()))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException(
+                    "The diagnosis to reevaluate does not belong to this clinical consultation"));
     if (!previous.isCurrent()) {
       throw new InvalidConsultationStateException("The diagnosis was already reevaluated");
     }
     var reevaluation = new Diagnosis(command.description(), command.type(), previous.isPrimary(),
-        command.differentialDiagnoses(), command.rationale(), veterinarianId, previous.getId());
+            command.differentialDiagnoses(), command.rationale(), veterinarianId, previous.getId());
     previous.markAsSuperseded();
     diagnoses.add(reevaluation);
     return reevaluation;
+  }
+
+  /** Registers a treatment indicated by the veterinarian in charge. */
+  public Treatment registerTreatment(RegisterTreatmentCommand command) {
+    requireStatus(ConsultationStatus.IN_PROGRESS, "register a treatment");
+    var treatment = new Treatment(command.description(), command.instruction(),
+            command.startDate(), command.endDate(), veterinarianId);
+    treatments.add(treatment);
+    return treatment;
+  }
+
+  /** Issues a prescription with all its medications. It is never modified afterwards. */
+  public Prescription registerPrescription(RegisterPrescriptionCommand command) {
+    requireStatus(ConsultationStatus.IN_PROGRESS, "issue a prescription");
+    var medications = command.medications().stream()
+            .map(item -> new Medication(item.name(), item.dosage(), item.frequency(),
+                    item.duration(), item.indication()))
+            .toList();
+    var prescription = new Prescription(command.generalInstruction(), medications,
+            veterinarianId);
+    prescriptions.add(prescription);
+    return prescription;
   }
 
   /**
@@ -231,20 +270,20 @@ public class ClinicalConsultation extends AuditableAbstractAggregateRoot<Clinica
     this.completedAt = Instant.now();
     var primaryDiagnosis = currentPrimaryDiagnosis().map(Diagnosis::getDescription).orElse(null);
     registerEvent(new ClinicalConsultationCompletedEvent(getId(), petId.petId(),
-        veterinarianId.veterinarianId(), primaryDiagnosis, completedAt));
+            veterinarianId.veterinarianId(), primaryDiagnosis, completedAt));
   }
 
   /** CREATED or IN_PROGRESS to CANCELLED. The reason is required. */
   public void cancel(String reason) {
     if (!status.allowsCancellation()) {
       throw new InvalidConsultationStateException(
-          "A clinical consultation that is " + status + " cannot be cancelled");
+              "A clinical consultation that is " + status + " cannot be cancelled");
     }
     var detail = new CancellationDetail(reason, Instant.now());
     this.cancellation = detail;
     this.status = ConsultationStatus.CANCELLED;
     registerEvent(new ClinicalConsultationCancelledEvent(
-        getId(), detail.reason(), detail.cancelledAt()));
+            getId(), detail.reason(), detail.cancelledAt()));
   }
 
   public boolean isInProgress() {
@@ -275,14 +314,14 @@ public class ClinicalConsultation extends AuditableAbstractAggregateRoot<Clinica
 
   private Optional<Diagnosis> currentPrimaryDiagnosis() {
     return diagnoses.stream()
-        .filter(diagnosis -> diagnosis.isPrimary() && diagnosis.isCurrent())
-        .findFirst();
+            .filter(diagnosis -> diagnosis.isPrimary() && diagnosis.isCurrent())
+            .findFirst();
   }
 
   private void requireStatus(ConsultationStatus expected, String action) {
     if (status != expected) {
       throw new InvalidConsultationStateException("A clinical consultation must be " + expected
-          + " to " + action + " (current status: " + status + ")");
+              + " to " + action + " (current status: " + status + ")");
     }
   }
 
@@ -336,5 +375,13 @@ public class ClinicalConsultation extends AuditableAbstractAggregateRoot<Clinica
 
   public List<Diagnosis> getDiagnoses() {
     return List.copyOf(diagnoses);
+  }
+
+  public List<Treatment> getTreatments() {
+    return List.copyOf(treatments);
+  }
+
+  public List<Prescription> getPrescriptions() {
+    return List.copyOf(prescriptions);
   }
 }
