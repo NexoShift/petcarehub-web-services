@@ -16,6 +16,8 @@ import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.Reev
 import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.RegisterAnamnesisResource;
 import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.RegisterDiagnosisResource;
 import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.RegisterPhysiologicalAssessmentResource;
+import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.RegisterPrescriptionResource;
+import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.resources.RegisterTreatmentResource;
 import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.AddClinicalFindingCommandFromResourceAssembler;
 import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.ClinicalConsultationResourceFromEntityAssembler;
 import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.CreateClinicalConsultationCommandFromResourceAssembler;
@@ -23,6 +25,8 @@ import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.Reev
 import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.RegisterAnamnesisCommandFromResourceAssembler;
 import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.RegisterDiagnosisCommandFromResourceAssembler;
 import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.RegisterPhysiologicalAssessmentCommandFromResourceAssembler;
+import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.RegisterPrescriptionCommandFromResourceAssembler;
+import com.nexoshift.petcarehub.clinicalattention.interfaces.rest.transform.RegisterTreatmentCommandFromResourceAssembler;
 import com.nexoshift.petcarehub.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -48,7 +52,7 @@ import org.springframework.web.bind.annotation.RestController;
         produces = MediaType.APPLICATION_JSON_VALUE)
 @PreAuthorize("hasRole('VETERINARIAN')")
 @Tag(name = "Clinical Consultations",
-        description = "Consultation, anamnesis, physiological assessments, findings and diagnoses")
+        description = "Consultation, anamnesis, assessments, findings, diagnoses, treatments and prescriptions")
 public class ClinicalConsultationsController {
 
   private final ClinicalConsultationCommandService commandService;
@@ -127,6 +131,27 @@ public class ClinicalConsultationsController {
           @AuthenticationPrincipal UserDetailsImpl currentUser) {
     return respond(HttpStatus.CREATED, commandService.handle(
             AddClinicalFindingCommandFromResourceAssembler.toCommandFromResource(
+                    consultationId, currentUser.getId(), resource)));
+  }
+
+  @PostMapping("/{consultationId}/treatments")
+  @Operation(summary = "Register a treatment (consultation IN_PROGRESS)")
+  public ResponseEntity<ClinicalConsultationResource> registerTreatment(
+          @PathVariable Long consultationId, @Valid @RequestBody RegisterTreatmentResource resource,
+          @AuthenticationPrincipal UserDetailsImpl currentUser) {
+    return respond(HttpStatus.CREATED, commandService.handle(
+            RegisterTreatmentCommandFromResourceAssembler.toCommandFromResource(
+                    consultationId, currentUser.getId(), resource)));
+  }
+
+  @PostMapping("/{consultationId}/prescriptions")
+  @Operation(summary = "Issue a prescription with its medications (consultation IN_PROGRESS)")
+  public ResponseEntity<ClinicalConsultationResource> registerPrescription(
+          @PathVariable Long consultationId,
+          @Valid @RequestBody RegisterPrescriptionResource resource,
+          @AuthenticationPrincipal UserDetailsImpl currentUser) {
+    return respond(HttpStatus.CREATED, commandService.handle(
+            RegisterPrescriptionCommandFromResourceAssembler.toCommandFromResource(
                     consultationId, currentUser.getId(), resource)));
   }
 

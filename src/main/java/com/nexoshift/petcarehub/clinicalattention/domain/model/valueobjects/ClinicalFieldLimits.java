@@ -29,7 +29,8 @@ public final class ClinicalFieldLimits {
 
   public static final int PRESCRIPTION_INSTRUCTION = 500;
 
-  public static final int MEDICATION_NAME = 50;
+  public static final int MAX_MEDICATIONS = 15;
+  public static final int MEDICATION_NAME = 100;
   public static final int MEDICATION_DOSAGE = 50;
   public static final int MEDICATION_FREQUENCY = 50;
   public static final int MEDICATION_DURATION = 150;

@@ -1,68 +1,83 @@
 package com.nexoshift.petcarehub.clinicalattention.domain.model.entities;
 
-import com.nexoshift.petcarehub.clinicalattention.domain.exceptions.InvalidConsultationStateException;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.valueobjects.ClinicalFieldLimits;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.valueobjects.VeterinarianId;
 import com.nexoshift.petcarehub.shared.domain.model.entities.AuditableModel;
-import jakarta.persistence.*;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Medical prescription (RecetaMedica) issued in a consultation. It is issued once with all its
+ * medications and is never changed afterwards (CON-01): a new indication is a new prescription.
+ * The issue date is set by the server, so it can never be in the future.
+ */
 @Entity
 public class Prescription extends AuditableModel {
 
-    @Column(nullable = false)
-    private LocalDateTime dateAndTimeOfIssuance;
+  @Column(nullable = false)
+  private Instant issuedAt;
 
-    @Column(nullable = false, length = ClinicalFieldLimits.PRESCRIPTION_INSTRUCTION)
-    private String generalInstruction;
+  @Column(length = ClinicalFieldLimits.PRESCRIPTION_INSTRUCTION)
+  private String generalInstruction;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
-    @JoinColumn(name = "prescription_id", nullable = false)
-    private List<Medication> medications = new ArrayList<>();
+  @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+  @JoinColumn(name = "prescription_id", nullable = false, updatable = false)
+  @OrderBy("id ASC")
+  @Fetch(FetchMode.SUBSELECT)
+  private List<Medication> medications = new ArrayList<>();
 
-    protected Prescription() {
+  @Embedded
+  @AttributeOverride(name = "veterinarianId",
+          column = @Column(name = "prescribed_by_veterinarian_id", nullable = false))
+  private VeterinarianId prescribedBy;
+
+  protected Prescription() {
+  }
+
+  public Prescription(String generalInstruction, List<Medication> medications,
+                      VeterinarianId prescribedBy) {
+    if (medications == null || medications.isEmpty()) {
+      throw new IllegalArgumentException("A prescription must contain at least one medication");
     }
-
-    public Prescription(LocalDateTime dateAndTimeOfIssuance, String generalInstruction, List<Medication> medications) {
-        if (dateAndTimeOfIssuance == null) {
-            throw new IllegalArgumentException("Date and time of issuance are required");
-        }
-        if (generalInstruction == null || generalInstruction.isBlank()) {
-            throw new IllegalArgumentException("General instruction is required");
-        }
-        if (medications == null || medications.isEmpty()) {
-            throw new IllegalArgumentException("A prescription must contain at least one medication");
-        }
-        this.dateAndTimeOfIssuance = dateAndTimeOfIssuance;
-        this.generalInstruction = generalInstruction;
-        this.medications.addAll(medications);
+    if (medications.size() > ClinicalFieldLimits.MAX_MEDICATIONS) {
+      throw new IllegalArgumentException("A prescription cannot have more than "
+              + ClinicalFieldLimits.MAX_MEDICATIONS + " medications");
     }
-
-    public void addMedication(Medication medication) {
-        if (medication == null) {
-            throw new IllegalArgumentException("Medication cannot be null");
-        }
-        this.medications.add(medication);
+    if (prescribedBy == null) {
+      throw new IllegalArgumentException("Veterinarian is required");
     }
+    this.issuedAt = Instant.now();
+    this.generalInstruction = generalInstruction;
+    this.medications.addAll(medications);
+    this.prescribedBy = prescribedBy;
+  }
 
-    public void removeMedication(Medication medication) {
-        if (this.medications.size() <= 1) {
-            throw new InvalidConsultationStateException("A prescription must contain at least one medication");
-        }
-        this.medications.remove(medication);
-    }
+  public Instant getIssuedAt() {
+    return issuedAt;
+  }
 
-    public LocalDateTime getDateAndTimeOfIssuance() {
-        return dateAndTimeOfIssuance;
-    }
+  public String getGeneralInstruction() {
+    return generalInstruction;
+  }
 
-    public String getGeneralInstruction() {
-        return generalInstruction;
-    }
+  public List<Medication> getMedications() {
+    return List.copyOf(medications);
+  }
 
-    public List<Medication> getMedications() {
-        return List.copyOf(medications);
-    }
+  public VeterinarianId getPrescribedBy() {
+    return prescribedBy;
+  }
 }
