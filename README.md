@@ -86,6 +86,10 @@ Required environment variables (especially for the `prod` profile):
 | `ROBOFLOW_SKIN_MODEL_ID`, `ROBOFLOW_RADIOGRAPH_MODEL_ID` | Roboflow model identifiers          | —                                                |
 | `AI_STORAGE_PROVIDER`                          | Storage for AI images: `local` or `s3`        | `local` (`s3` in prod)                           |
 | `CLINICAL_EXAMS_STORAGE_PROVIDER`              | Storage for exam files: `local` or `s3`       | `local` (`s3` in prod)                           |
+| `STRIPE_SECRET_KEY` | Stripe secret key, `sk_test_...` or `sk_live_...` (required: the API does not start without it) | — |
+| `STRIPE_PRICE_PET_OWNER_BASIC`, `STRIPE_PRICE_PET_OWNER_PREMIUM`, `STRIPE_PRICE_CLINIC_BASIC`, `STRIPE_PRICE_CLINIC_PREMIUM` | Stripe price ids of the plans, `price_...` (required) | — |
+| `STRIPE_WEBHOOK_SECRET` | Signing secret of the Stripe webhook, `whsec_...` (required) | — |
+| `STRIPE_CHECKOUT_SUCCESS_URL`, `STRIPE_CHECKOUT_CANCEL_URL` | Pages Stripe returns to after the checkout | `http://localhost:4200/subscription?checkout=...` |
 
 > Never commit real secrets. Use environment variables or your IDE run configuration.
 
@@ -199,6 +203,14 @@ All endpoints live under `/api/v1` and, except authentication, require `Authoriz
 - `/api/v1/clinical-exams`: Exam requests and clinic worklist (`start`, `result`, `result/validate`, `complete`, `cancel`).
 - `/api/v1/clinical-exams/{examId}/files`: Exam files (image, video, PDF up to 10 MB).
 - `GET /api/v1/clinical-consultations/{consultationId}/clinical-exams` · `GET /api/v1/pets/{petId}/clinical-exams`: Exams of a consultation or a pet.
+
+### Subscriptions
+- `GET /api/v1/plans` (public): Plans for pet owners and clinics.
+- `POST /api/v1/accounts/{accountId}/subscriptions` · `GET /api/v1/accounts/{accountId}/subscription`: Subscription of an account.
+- `POST /api/v1/accounts/{accountId}/subscription/checkout-sessions`: Stripe checkout session.
+- `PATCH /api/v1/accounts/{accountId}/subscription`: Scheduled cancellation and reactivation.
+- `/api/v1/accounts/{accountId}/subscription/payments` · `/entitlements` · `/ai-credits`: Payments, plan limits and AI credits.
+- `POST /api/v1/subscriptions/webhooks/stripe` (public): Stripe webhook.
 
 ### AI Assistance
 - `/api/v1/ai/vision-analyses`: Computer vision analysis of skin photos and X-rays (by `petId` or `consultationId`).
