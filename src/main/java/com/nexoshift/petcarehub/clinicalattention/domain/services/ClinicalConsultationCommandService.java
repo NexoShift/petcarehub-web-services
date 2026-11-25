@@ -8,6 +8,8 @@ import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.CreateCl
 import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.ReevaluateDiagnosisCommand;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterAnamnesisCommand;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterDiagnosisCommand;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterPrescriptionCommand;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterTreatmentCommand;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterPhysiologicalAssessmentCommand;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.StartClinicalConsultationCommand;
 import java.util.Optional;
@@ -28,6 +30,10 @@ public interface ClinicalConsultationCommandService {
   Optional<ClinicalConsultation> handle(RegisterDiagnosisCommand command);
 
   Optional<ClinicalConsultation> handle(ReevaluateDiagnosisCommand command);
+
+  Optional<ClinicalConsultation> handle(RegisterTreatmentCommand command);
+
+  Optional<ClinicalConsultation> handle(RegisterPrescriptionCommand command);
 
   Optional<ClinicalConsultation> handle(CompleteClinicalConsultationCommand command);
 

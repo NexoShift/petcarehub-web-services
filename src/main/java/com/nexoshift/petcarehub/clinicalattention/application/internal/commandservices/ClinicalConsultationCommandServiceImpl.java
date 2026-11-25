@@ -13,6 +13,8 @@ import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.CreateCl
 import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.ReevaluateDiagnosisCommand;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterAnamnesisCommand;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterDiagnosisCommand;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterPrescriptionCommand;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterTreatmentCommand;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.RegisterPhysiologicalAssessmentCommand;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.commands.StartClinicalConsultationCommand;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.valueobjects.ClinicId;
@@ -126,6 +128,24 @@ public class ClinicalConsultationCommandServiceImpl implements ClinicalConsultat
     var consultation =
             findAttendedConsultation(command.consultationId(), command.requesterUserId());
     consultation.reevaluateDiagnosis(command);
+    return Optional.of(consultationRepository.save(consultation));
+  }
+
+  @Override
+  @Transactional
+  public Optional<ClinicalConsultation> handle(RegisterTreatmentCommand command) {
+    var consultation =
+            findAttendedConsultation(command.consultationId(), command.requesterUserId());
+    consultation.registerTreatment(command);
+    return Optional.of(consultationRepository.save(consultation));
+  }
+
+  @Override
+  @Transactional
+  public Optional<ClinicalConsultation> handle(RegisterPrescriptionCommand command) {
+    var consultation =
+            findAttendedConsultation(command.consultationId(), command.requesterUserId());
+    consultation.registerPrescription(command);
     return Optional.of(consultationRepository.save(consultation));
   }
 
