@@ -10,5 +10,6 @@ public record ClinicalConsultationResource(
     String cancellationReason, Instant cancelledAt, AnamnesisResource anamnesis,
     List<PhysiologicalAssessmentResource> physiologicalAssessments,
     List<ClinicalFindingResource> findings, List<DiagnosisResource> diagnoses,
+    List<TreatmentResource> treatments, List<PrescriptionResource> prescriptions,
     Instant createdAt, Instant updatedAt) {
 }
