@@ -27,13 +27,13 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class WebSecurityConfiguration {
 
   private static final String[] PUBLIC_ROUTES = {
-      "/api/v1/authentication/**",
-      "/v3/api-docs/**",
-      "/swagger-ui.html",
-      "/swagger-ui/**",
-      "/swagger-resources/**",
-      "/webjars/**",
-      "/error"
+          "/api/v1/authentication/**",
+          "/v3/api-docs/**",
+          "/swagger-ui.html",
+          "/swagger-ui/**",
+          "/swagger-resources/**",
+          "/webjars/**",
+          "/error"
   };
 
   private final BearerTokenService tokenService;
@@ -43,10 +43,10 @@ public class WebSecurityConfiguration {
   private final List<String> allowedOrigins;
 
   public WebSecurityConfiguration(BearerTokenService tokenService,
-      @Qualifier("defaultUserDetailsService") UserDetailsService userDetailsService,
-      UnauthorizedRequestHandlerEntryPoint unauthorizedHandler,
-      ForbiddenRequestHandler forbiddenHandler,
-      @Value("${app.cors.allowed-origins:*}") List<String> allowedOrigins) {
+                                  @Qualifier("defaultUserDetailsService") UserDetailsService userDetailsService,
+                                  UnauthorizedRequestHandlerEntryPoint unauthorizedHandler,
+                                  ForbiddenRequestHandler forbiddenHandler,
+                                  @Value("${app.cors.allowed-origins:*}") List<String> allowedOrigins) {
     this.tokenService = tokenService;
     this.userDetailsService = userDetailsService;
     this.unauthorizedHandler = unauthorizedHandler;
@@ -57,18 +57,20 @@ public class WebSecurityConfiguration {
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
-        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-        .csrf(AbstractHttpConfigurer::disable)
-        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .exceptionHandling(exceptions -> exceptions
-            .authenticationEntryPoint(unauthorizedHandler)
-            .accessDeniedHandler(forbiddenHandler))
-        .authorizeHttpRequests(authorize -> authorize
-            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-            .requestMatchers(PUBLIC_ROUTES).permitAll()
-            .anyRequest().authenticated())
-        .addFilterBefore(new BearerAuthorizationRequestFilter(tokenService, userDetailsService),
-            UsernamePasswordAuthenticationFilter.class);
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exceptions -> exceptions
+                    .authenticationEntryPoint(unauthorizedHandler)
+                    .accessDeniedHandler(forbiddenHandler))
+            .authorizeHttpRequests(authorize -> authorize
+                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                    .requestMatchers(PUBLIC_ROUTES).permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/subscriptions/webhooks/stripe").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/plans", "/api/v1/plans/*").permitAll()
+                    .anyRequest().authenticated())
+            .addFilterBefore(new BearerAuthorizationRequestFilter(tokenService, userDetailsService),
+                    UsernamePasswordAuthenticationFilter.class);
     return http.build();
   }
 

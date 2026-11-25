@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.nexoshift</groupId>
     <artifactId>petcare</artifactId>
-    <version>1.0.2</version>
+    <version>1.1.0</version>
     <name>petcare-hub-platform</name>
     <description>petcare-hub-platform</description>
 
@@ -99,6 +99,12 @@
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
+            <version>34.2.0</version>
         </dependency>
 
         <!-- Tests -->

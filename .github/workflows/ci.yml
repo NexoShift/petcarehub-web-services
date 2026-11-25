@@ -32,8 +32,17 @@ jobs:
       - name: Make Maven wrapper executable
         run: chmod +x mvnw
 
+      # Stripe test-mode keys (optional). With them, StripeLiveIntegrationTest calls the real
+      # Stripe API in test mode; without them those tests are skipped. Only sk_test_ keys:
+      # the live tests never run with a live key. Secrets are not passed to forks.
       - name: Build and run tests
         run: ./mvnw -B verify
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_PRICE_PET_OWNER_BASIC: ${{ secrets.STRIPE_PRICE_PET_OWNER_BASIC }}
+          STRIPE_PRICE_PET_OWNER_PREMIUM: ${{ secrets.STRIPE_PRICE_PET_OWNER_PREMIUM }}
+          STRIPE_PRICE_CLINIC_BASIC: ${{ secrets.STRIPE_PRICE_CLINIC_BASIC }}
+          STRIPE_PRICE_CLINIC_PREMIUM: ${{ secrets.STRIPE_PRICE_CLINIC_PREMIUM }}
 
       - name: Upload test reports
         if: failure()
