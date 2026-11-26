@@ -66,7 +66,7 @@ class OwnerExplanationCommandServiceImplTest {
   }
 
   private static ConsultationBackground consultation(long id, long petId) {
-    return new ConsultationBackground(id, petId, LocalDate.of(2026, 3, (int) id),
+    return new ConsultationBackground(id, petId, 1L, LocalDate.of(2026, 3, (int) id),
         "Motivo " + id, "Hallazgo " + id, "Diagnóstico " + id, "Tratamiento " + id);
   }
 

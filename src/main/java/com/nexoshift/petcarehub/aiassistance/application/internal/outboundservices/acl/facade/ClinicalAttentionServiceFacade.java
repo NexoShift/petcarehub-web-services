@@ -20,7 +20,7 @@ public class ClinicalAttentionServiceFacade implements ExternalClinicalAttention
   private final ClinicalAttentionContextFacade clinicalAttentionContextFacade;
 
   public ClinicalAttentionServiceFacade(
-          ClinicalAttentionContextFacade clinicalAttentionContextFacade) {
+      ClinicalAttentionContextFacade clinicalAttentionContextFacade) {
     this.clinicalAttentionContextFacade = clinicalAttentionContextFacade;
   }
 
@@ -41,18 +41,19 @@ public class ClinicalAttentionServiceFacade implements ExternalClinicalAttention
       return Optional.empty();
     }
     return clinicalAttentionContextFacade.fetchConsultationSummary(consultationId)
-            .map(ClinicalAttentionServiceFacade::toBackground);
+        .map(ClinicalAttentionServiceFacade::toBackground);
   }
 
   @Override
   public List<ConsultationBackground> fetchConsultationsByPetId(Long petId) {
     return clinicalAttentionContextFacade.fetchCompletedConsultationSummariesByPetId(petId).stream()
-            .map(ClinicalAttentionServiceFacade::toBackground)
-            .toList();
+        .map(ClinicalAttentionServiceFacade::toBackground)
+        .toList();
   }
 
   private static ConsultationBackground toBackground(ConsultationSummary summary) {
-    return new ConsultationBackground(summary.consultationId(), summary.petId(), summary.date(),
-            summary.reason(), summary.findings(), summary.diagnosis(), summary.treatment());
+    return new ConsultationBackground(summary.consultationId(), summary.petId(),
+        summary.clinicId(), summary.date(),
+        summary.reason(), summary.findings(), summary.diagnosis(), summary.treatment());
   }
 }

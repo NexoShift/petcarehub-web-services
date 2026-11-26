@@ -15,7 +15,7 @@ class OwnerExplanationPromptTemplateTest {
 
   private static final PetSummary ROCKY =
       new PetSummary(1L, "Rocky", "Perro", "Bulldog", "macho", 38, "atigrado");
-  private static final ConsultationBackground CONSULTATION = new ConsultationBackground(1L, 1L,
+  private static final ConsultationBackground CONSULTATION = new ConsultationBackground(1L, 1L, 1L,
       LocalDate.of(2026, 3, 12), "Rascado", "Eritema", "Dermatitis atópica", "Apoquel");
 
   private final OwnerExplanationPromptTemplate template = new OwnerExplanationPromptTemplate();

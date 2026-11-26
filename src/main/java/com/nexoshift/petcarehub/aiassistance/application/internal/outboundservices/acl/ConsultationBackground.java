@@ -2,8 +2,8 @@ package com.nexoshift.petcarehub.aiassistance.application.internal.outboundservi
 
 import java.time.LocalDate;
 
-/** A previous consultation of the pet, as this module sees it. */
-public record ConsultationBackground(Long consultationId, Long petId, LocalDate date,
+/** A previous consultation of the pet, as this module sees it. {@code clinicId}: where it was. */
+public record ConsultationBackground(Long consultationId, Long petId, Long clinicId, LocalDate date,
     String reason, String findings, String diagnosis, String treatment) {
 
   public String toPromptText() {

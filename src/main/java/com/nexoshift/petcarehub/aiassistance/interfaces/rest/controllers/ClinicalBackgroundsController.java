@@ -6,7 +6,6 @@ import com.nexoshift.petcarehub.aiassistance.domain.model.aggregates.VisionAnaly
 import com.nexoshift.petcarehub.aiassistance.domain.model.queries.GetVisionAnalysesByPetIdQuery;
 import com.nexoshift.petcarehub.aiassistance.domain.model.valueobjects.BackgroundType;
 import com.nexoshift.petcarehub.aiassistance.domain.model.valueobjects.ImageType;
-import com.nexoshift.petcarehub.aiassistance.domain.model.valueobjects.RequesterRole;
 import com.nexoshift.petcarehub.aiassistance.domain.services.VisionAnalysisQueryService;
 import com.nexoshift.petcarehub.aiassistance.interfaces.rest.resources.AvailableBackgroundResource;
 import com.nexoshift.petcarehub.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
@@ -50,8 +49,9 @@ public class ClinicalBackgroundsController {
   @Operation(summary = "List the backgrounds of a pet that can be sent to the assistant")
   public List<AvailableBackgroundResource> getAvailableBackgrounds(@RequestParam Long petId,
       @AuthenticationPrincipal UserDetailsImpl currentUser) {
-    petAccessGuard.ensureCanAccessPet(petId, currentUser.getId(), RequesterRole.VETERINARIAN);
+    var canSeeClinic = petAccessGuard.visibleClinicsForVeterinarian(petId, currentUser.getId());
     var consultations = clinicalAttentionService.fetchConsultationsByPetId(petId).stream()
+        .filter(consultation -> canSeeClinic.test(consultation.clinicId()))
         .map(consultation -> new AvailableBackgroundResource(
             BackgroundType.PREVIOUS_CONSULTATION, consultation.consultationId(),
             consultation.date(), consultation.reason(), consultation.diagnosis()));

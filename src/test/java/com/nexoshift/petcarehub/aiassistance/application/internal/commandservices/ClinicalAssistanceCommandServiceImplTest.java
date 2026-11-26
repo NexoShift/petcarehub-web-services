@@ -90,7 +90,7 @@ class ClinicalAssistanceCommandServiceImplTest {
 
   @Test
   void successfulGenerationCompletesWithOneDraft() {
-    when(contextBuilder.build(any(), any(), any()))
+    when(contextBuilder.build(any(), any(), any(), any()))
         .thenReturn(new ClinicalLlmContext("Perro", "motivo", List.of()));
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     when(llmService.generateSoapDraft(any())).thenReturn(completion());
@@ -107,7 +107,7 @@ class ClinicalAssistanceCommandServiceImplTest {
 
   @Test
   void providerFailureIsSavedAsFailedAndRethrown() {
-    when(contextBuilder.build(any(), any(), any()))
+    when(contextBuilder.build(any(), any(), any(), any()))
         .thenReturn(new ClinicalLlmContext("Perro", "motivo", List.of()));
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     when(llmService.generateSoapDraft(any()))
@@ -121,7 +121,7 @@ class ClinicalAssistanceCommandServiceImplTest {
 
   @Test
   void emptySectionFromTheModelIsAProviderFailure() {
-    when(contextBuilder.build(any(), any(), any()))
+    when(contextBuilder.build(any(), any(), any(), any()))
         .thenReturn(new ClinicalLlmContext("Perro", "motivo", List.of()));
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     when(llmService.generateSoapDraft(any()))
@@ -133,7 +133,7 @@ class ClinicalAssistanceCommandServiceImplTest {
 
   @Test
   void invalidBackgroundFailsBeforeSavingAnything() {
-    when(contextBuilder.build(any(), any(), any()))
+    when(contextBuilder.build(any(), any(), any(), any()))
         .thenThrow(new com.nexoshift.petcarehub.shared.domain.exceptions.BadRequestException("x"));
 
     assertThrows(RuntimeException.class, () -> service.handle(request()));
