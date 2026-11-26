@@ -14,22 +14,22 @@ import java.util.Optional;
 public class ClinicalAttentionServiceStub implements ExternalClinicalAttentionService {
 
   private static final List<ConsultationBackground> CONSULTATIONS = List.of(
-      new ConsultationBackground(1L, 1L, LocalDate.of(2026, 3, 12),
+      new ConsultationBackground(1L, 1L, 1L, LocalDate.of(2026, 3, 12),
           "Prurito en patas y abdomen",
           "Eritema interdigital, lamido de patas, pápulas en abdomen",
           "Dermatitis atópica canina (sospecha)",
           "Oclacitinib 14 días, champú de clorhexidina 2 %, dieta hidrolizada"),
-      new ConsultationBackground(2L, 1L, LocalDate.of(2026, 6, 5),
+      new ConsultationBackground(2L, 1L, 1L, LocalDate.of(2026, 6, 5),
           "Sacude la cabeza, mal olor en oído izquierdo",
           "Secreción ceruminosa marrón; citología con Malassezia +++",
           "Otitis externa por Malassezia",
           "Limpieza ótica y gotas de clotrimazol, gentamicina y betametasona por 10 días"),
-      new ConsultationBackground(3L, 1L, LocalDate.of(2026, 8, 20),
+      new ConsultationBackground(3L, 1L, 1L, LocalDate.of(2026, 8, 20),
           "Vómitos tras cambio de alimento",
           "Deshidratación leve, abdomen sin dolor",
           "Gastritis aguda por cambio de dieta",
           "Dieta blanda y maropitant"),
-      new ConsultationBackground(5L, 2L, LocalDate.of(2026, 5, 2),
+      new ConsultationBackground(5L, 2L, 1L, LocalDate.of(2026, 5, 2),
           "Vacunación anual", "Examen físico normal", "Paciente sano",
           "Vacuna triple felina"));
 
