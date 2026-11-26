@@ -107,6 +107,13 @@
             <version>34.2.0</version>
         </dependency>
 
+        <!-- PDF of the confirmed AI clinical report -->
+        <dependency>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>2.0.3</version>
+        </dependency>
+
         <!-- Tests -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
