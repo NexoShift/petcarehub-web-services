@@ -270,7 +270,7 @@ public class ClinicalConsultation extends AuditableAbstractAggregateRoot<Clinica
     this.completedAt = Instant.now();
     var primaryDiagnosis = currentPrimaryDiagnosis().map(Diagnosis::getDescription).orElse(null);
     registerEvent(new ClinicalConsultationCompletedEvent(getId(), petId.petId(),
-            veterinarianId.veterinarianId(), primaryDiagnosis, completedAt));
+            veterinarianId.veterinarianId(), clinicId.clinicId(), primaryDiagnosis, completedAt));
   }
 
   /** CREATED or IN_PROGRESS to CANCELLED. The reason is required. */

@@ -7,6 +7,6 @@ import java.time.Instant;
  * carries simple types.
  */
 public record ClinicalConsultationCompletedIntegrationEvent(
-    Long consultationId, Long petId, Long veterinarianId, String primaryDiagnosis,
-    Instant completedAt) {
+        Long consultationId, Long petId, Long veterinarianId, Long clinicId, String primaryDiagnosis,
+        Instant completedAt) {
 }

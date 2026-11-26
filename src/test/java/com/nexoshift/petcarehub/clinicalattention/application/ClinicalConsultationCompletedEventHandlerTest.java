@@ -21,12 +21,13 @@ class ClinicalConsultationCompletedEventHandlerTest {
     var handler = new ClinicalConsultationCompletedEventHandler(published::add);
     var completedAt = Instant.parse("2026-10-01T10:15:30Z");
 
-    handler.on(new ClinicalConsultationCompletedEvent(1L, 5L, 100L, "Gastroenteritis", completedAt));
+    handler.on(
+            new ClinicalConsultationCompletedEvent(1L, 5L, 100L, 3L, "Gastroenteritis", completedAt));
 
     assertThat(published).hasSize(1);
     assertThat(published.get(0)).isEqualTo(
-        new ClinicalConsultationCompletedIntegrationEvent(
-            1L, 5L, 100L, "Gastroenteritis", completedAt));
+            new ClinicalConsultationCompletedIntegrationEvent(
+                    1L, 5L, 100L, 3L, "Gastroenteritis", completedAt));
   }
 
   @Test
@@ -35,8 +36,8 @@ class ClinicalConsultationCompletedEventHandlerTest {
     List<Object> published = new ArrayList<>();
     var handler = new ClinicalConsultationCompletedEventHandler(published::add);
 
-    handler.on(new ClinicalConsultationCompletedEvent(1L, 5L, 100L, "A", Instant.now()));
-    handler.on(new ClinicalConsultationCompletedEvent(2L, 6L, 100L, "B", Instant.now()));
+    handler.on(new ClinicalConsultationCompletedEvent(1L, 5L, 100L, 3L, "A", Instant.now()));
+    handler.on(new ClinicalConsultationCompletedEvent(2L, 6L, 100L, 3L, "B", Instant.now()));
 
     assertThat(published).hasSize(2);
   }
