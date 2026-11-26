@@ -24,9 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
  * Lecturas de consultas. Regla de negocio de acceso (la historia clínica es sensible):
  * <ul>
  *   <li>El dueño de la mascota ve todas las consultas de su mascota.</li>
- *   <li>Un veterinario ve las consultas de las mascotas que son pacientes de SU clínica
- *       (incluidas las hechas en otras clínicas: así conoce los antecedentes).</li>
- *   <li>Un veterinario también ve una consulta hecha en su propia clínica.</li>
+ *   <li>Un veterinario ve las consultas hechas en SU clínica.</li>
+ *   <li>Las consultas de OTRAS clínicas solo las ve si la mascota es paciente de su clínica y
+ *       el dueño le dio permiso por unas horas (HistoryAccessGrant en Profiles).</li>
  *   <li>Cualquier otro usuario recibe 403.</li>
  * </ul>
  */
@@ -53,9 +53,9 @@ public class ClinicalConsultationQueryServiceImpl implements ClinicalConsultatio
   @Override
   public List<ClinicalConsultation> handle(GetCompletedClinicalConsultationsByPetIdQuery query) {
     return consultationRepository.findAllByPetIdOrderByCreatedAtDesc(new PetId(query.petId()))
-            .stream()
-            .filter(consultation -> consultation.getStatus() == ConsultationStatus.COMPLETED)
-            .toList();
+        .stream()
+        .filter(consultation -> consultation.getStatus() == ConsultationStatus.COMPLETED)
+        .toList();
   }
 
   @Override
@@ -77,11 +77,22 @@ public class ClinicalConsultationQueryServiceImpl implements ClinicalConsultatio
     if (!externalProfilesService.existsPet(petId)) {
       throw new PetNotFoundException(query.petId());
     }
-    if (!canRead(petId, null, query.requesterUserId())) {
-      throw new ForbiddenException("Only the owner of the pet or a veterinarian of a clinic "
-              + "where the pet is a patient can see its clinical consultations");
+    var consultations = consultationRepository.findAllByPetIdOrderByCreatedAtDesc(petId);
+    if (isOwner(petId, query.requesterUserId())) {
+      return consultations;
     }
-    return consultationRepository.findAllByPetIdOrderByCreatedAtDesc(petId);
+    var clinicId = requesterClinic(query.requesterUserId())
+            .filter(clinic -> externalProfilesService.isPetPatientOfClinic(petId, clinic))
+            .orElseThrow(() -> new ForbiddenException("Only the owner of the pet or a "
+                    + "veterinarian of a clinic where the pet is a patient can see its clinical "
+                    + "consultations"));
+    if (externalProfilesService.hasActiveHistoryAccess(petId, clinicId)) {
+      return consultations;
+    }
+    // Without the owner's permission, the clinic only sees its own consultations.
+    return consultations.stream()
+            .filter(consultation -> clinicId.equals(consultation.getClinicId()))
+            .toList();
   }
 
   @Override
@@ -91,26 +102,28 @@ public class ClinicalConsultationQueryServiceImpl implements ClinicalConsultatio
             new VeterinarianId(query.veterinarianId()));
   }
 
-  /**
-   * @param consultationClinicId clínica de la consulta concreta, o null cuando se lista todo
-   *                             el historial de la mascota
-   */
+  /** A consultation: its owner, its clinic, or another clinic with the owner's permission. */
   private boolean canRead(PetId petId, ClinicId consultationClinicId, Long requesterUserId) {
-    // 1) Dueño de la mascota
-    var isOwner = externalProfilesService.fetchPetOwnerUserIdByPetId(petId)
-            .filter(ownerUserId -> ownerUserId.equals(requesterUserId))
-            .isPresent();
-    if (isOwner) {
+    if (isOwner(petId, requesterUserId)) {
       return true;
     }
-    // 2) Veterinario: se busca su clínica (userId -> perfil vet -> clínica)
-    var veterinarianClinic = externalProfilesService.fetchVeterinarianIdByUserId(requesterUserId)
-            .flatMap(externalProfilesService::fetchClinicIdByVeterinarianId);
-    if (veterinarianClinic.isEmpty()) {
+    var clinicId = requesterClinic(requesterUserId);
+    if (clinicId.isEmpty()) {
       return false;
     }
-    var clinicId = veterinarianClinic.get();
-    return clinicId.equals(consultationClinicId)
-            || externalProfilesService.isPetPatientOfClinic(petId, clinicId);
+    return clinicId.get().equals(consultationClinicId)
+            || externalProfilesService.hasActiveHistoryAccess(petId, clinicId.get());
+  }
+
+  private boolean isOwner(PetId petId, Long requesterUserId) {
+    return externalProfilesService.fetchPetOwnerUserIdByPetId(petId)
+            .filter(ownerUserId -> ownerUserId.equals(requesterUserId))
+            .isPresent();
+  }
+
+  /** Clinic of the requester: userId -> veterinarian profile -> clinic. */
+  private Optional<ClinicId> requesterClinic(Long requesterUserId) {
+    return externalProfilesService.fetchVeterinarianIdByUserId(requesterUserId)
+            .flatMap(externalProfilesService::fetchClinicIdByVeterinarianId);
   }
 }

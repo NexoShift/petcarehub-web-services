@@ -21,6 +21,7 @@ public class FakeExternalProfilesService implements ExternalProfilesService {
   private final Map<Long, Long> clinicIdsByVeterinarianId = new HashMap<>();
   private final Set<String> patients = new HashSet<>();
   private final Set<String> activeRooms = new HashSet<>();
+  private final Set<String> historyAccess = new HashSet<>();
 
   public FakeExternalProfilesService withPet(long petId, long ownerUserId) {
     pets.add(petId);
@@ -79,6 +80,18 @@ public class FakeExternalProfilesService implements ExternalProfilesService {
   @Override
   public boolean isPetPatientOfClinic(PetId petId, ClinicId clinicId) {
     return patients.contains(petId.petId() + ":" + clinicId.clinicId());
+  }
+
+  /** The owner lets this clinic see the consultations of other clinics. */
+  public FakeExternalProfilesService withHistoryAccess(long petId, long clinicId) {
+    historyAccess.add(petId + ":" + clinicId);
+    return this;
+  }
+
+  @Override
+  public boolean hasActiveHistoryAccess(PetId petId, ClinicId clinicId) {
+    return isPetPatientOfClinic(petId, clinicId)
+        && historyAccess.contains(petId.petId() + ":" + clinicId.clinicId());
   }
 
   @Override
