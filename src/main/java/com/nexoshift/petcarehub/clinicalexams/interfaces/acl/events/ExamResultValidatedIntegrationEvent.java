@@ -1,4 +1,4 @@
-package com.nexoshift.petcarehub.clinicalattention.interfaces.acl.events;
+package com.nexoshift.petcarehub.clinicalexams.interfaces.acl.events;
 
 import java.time.Instant;
 

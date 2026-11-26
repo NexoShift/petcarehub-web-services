@@ -1,4 +1,4 @@
-package com.nexoshift.petcarehub.clinicalattention.application.internal.eventhandlers;
+package com.nexoshift.petcarehub.clinicalexams.application.internal.eventhandlers;
 
 import com.nexoshift.petcarehub.clinicalexams.domain.model.events.ExamResultValidatedEvent;
 import com.nexoshift.petcarehub.clinicalexams.interfaces.acl.events.ExamResultValidatedIntegrationEvent;
