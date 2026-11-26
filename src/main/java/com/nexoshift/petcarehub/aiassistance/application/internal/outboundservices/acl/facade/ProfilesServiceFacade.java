@@ -47,15 +47,27 @@ public class ProfilesServiceFacade implements ExternalProfilesService {
     if (petId == null || veterinarianUserId == null) {
       return false;
     }
+    return fetchVeterinarianClinicId(veterinarianUserId)
+        .map(clinicId -> profileContextFacade.isPetPatientOfClinic(clinicId, petId))
+        .orElse(false);
+  }
+
+  @Override
+  public Optional<Long> fetchVeterinarianClinicId(Long veterinarianUserId) {
+    if (veterinarianUserId == null) {
+      return Optional.empty();
+    }
     var veterinarianId = profileContextFacade.fetchVeterinarianIdByUserId(veterinarianUserId);
     if (veterinarianId == null || veterinarianId <= 0) {
-      return false;
+      return Optional.empty();
     }
     var clinicId = profileContextFacade.fetchClinicIdByVeterinarianId(veterinarianId);
-    if (clinicId == null || clinicId <= 0) {
-      return false;
-    }
-    return profileContextFacade.isPetPatientOfClinic(clinicId, petId);
+    return clinicId == null || clinicId <= 0 ? Optional.empty() : Optional.of(clinicId);
+  }
+
+  @Override
+  public boolean hasActiveHistoryAccess(Long clinicId, Long petId) {
+    return profileContextFacade.hasActiveHistoryAccess(clinicId, petId);
   }
 
   private static PetSummary toSummary(PetProfileSnapshot pet) {

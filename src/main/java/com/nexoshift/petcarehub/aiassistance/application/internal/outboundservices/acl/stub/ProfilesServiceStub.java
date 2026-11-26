@@ -34,4 +34,16 @@ public class ProfilesServiceStub implements ExternalProfilesService {
   public boolean isPetPatientOfVeterinarianClinic(Long petId, Long veterinarianUserId) {
     return PETS.containsKey(petId) && veterinarianUserId != null;
   }
+
+  /** Demo: every veterinarian works in clinic 1. */
+  @Override
+  public Optional<Long> fetchVeterinarianClinicId(Long veterinarianUserId) {
+    return veterinarianUserId == null ? Optional.empty() : Optional.of(1L);
+  }
+
+  /** Demo: the owner already gave access, so the whole history is visible. */
+  @Override
+  public boolean hasActiveHistoryAccess(Long clinicId, Long petId) {
+    return PETS.containsKey(petId);
+  }
 }

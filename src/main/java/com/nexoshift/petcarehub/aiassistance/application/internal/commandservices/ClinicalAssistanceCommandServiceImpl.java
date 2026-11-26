@@ -20,7 +20,6 @@ import com.nexoshift.petcarehub.aiassistance.domain.model.commands.RequestClinic
 import com.nexoshift.petcarehub.aiassistance.domain.model.valueobjects.ClinicalLlmContext;
 import com.nexoshift.petcarehub.aiassistance.domain.model.valueobjects.DocumentReference;
 import com.nexoshift.petcarehub.aiassistance.domain.model.valueobjects.DraftDecision;
-import com.nexoshift.petcarehub.aiassistance.domain.model.valueobjects.RequesterRole;
 import com.nexoshift.petcarehub.aiassistance.domain.repositories.ClinicalAssistanceRepository;
 import com.nexoshift.petcarehub.aiassistance.domain.services.ClinicalAssistanceCommandService;
 import com.nexoshift.petcarehub.shared.domain.exceptions.BadRequestException;
@@ -71,12 +70,12 @@ public class ClinicalAssistanceCommandServiceImpl implements ClinicalAssistanceC
 
   @Override
   public ClinicalAssistance handle(RequestClinicalAssistanceCommand command) {
-    petAccessGuard.ensureCanAccessPet(
-        command.petId(), command.veterinarianId(), RequesterRole.VETERINARIAN);
+    var canSeeClinic = petAccessGuard.visibleClinicsForVeterinarian(
+        command.petId(), command.veterinarianId());
     ensureCurrentConsultationOfPet(command.consultationId(), command.petId());
     // Build the context first: if a background is invalid we fail before spending a credit.
     var context = contextBuilder.build(
-        command.petId(), command.currentReason(), command.backgrounds());
+        command.petId(), command.currentReason(), command.backgrounds(), canSeeClinic);
     return withLlmCredit(command.veterinarianId(),
         () -> generate(repository.save(new ClinicalAssistance(command)), context));
   }
@@ -87,8 +86,11 @@ public class ClinicalAssistanceCommandServiceImpl implements ClinicalAssistanceC
     if (!assistance.belongsTo(command.veterinarianId())) {
       throw new ForbiddenException("Only the veterinarian who requested it can regenerate");
     }
+    // The owner's permission may have expired since the first draft: check it again.
+    var canSeeClinic = petAccessGuard.visibleClinicsForVeterinarian(
+        assistance.getPetId(), command.veterinarianId());
     var context = contextBuilder.build(assistance.getPetId(), assistance.getCurrentReason(),
-        assistance.getSelectedBackgrounds());
+        assistance.getSelectedBackgrounds(), canSeeClinic);
     return withLlmCredit(command.veterinarianId(), () -> generate(assistance, context));
   }
 
