@@ -2,6 +2,7 @@ package com.nexoshift.petcarehub.profiles.application.acl.services;
 
 import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Veterinarian;
 import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.ClinicId;
+import com.nexoshift.petcarehub.profiles.domain.services.HistoryAccessGrantQueryService;
 import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.PetCode;
 import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.PetId;
 import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.UserId;
@@ -27,6 +28,7 @@ public class ProfileContextFacadeImpl implements ProfileContextFacade {
     private final ClinicRepository clinicRepository;
     private final VeterinarianRepository veterinarianRepository;
     private final ClinicPatientRepository clinicPatientRepository;
+    private final HistoryAccessGrantQueryService historyAccessGrantQueryService;
 
     /**
      * Constructs the profile context facade.
@@ -36,19 +38,22 @@ public class ProfileContextFacadeImpl implements ProfileContextFacade {
      * @param clinicRepository the clinic repository
      * @param veterinarianRepository the veterinarian repository
      * @param clinicPatientRepository the clinic patient repository
+     * @param historyAccessGrantQueryService the history access grant query service
      */
     public ProfileContextFacadeImpl(
             PetRepository petRepository,
             PetOwnerRepository petOwnerRepository,
             ClinicRepository clinicRepository,
             VeterinarianRepository veterinarianRepository,
-            ClinicPatientRepository clinicPatientRepository) {
+            ClinicPatientRepository clinicPatientRepository,
+            HistoryAccessGrantQueryService historyAccessGrantQueryService) {
 
         this.petRepository = petRepository;
         this.petOwnerRepository = petOwnerRepository;
         this.clinicRepository = clinicRepository;
         this.veterinarianRepository = veterinarianRepository;
         this.clinicPatientRepository = clinicPatientRepository;
+        this.historyAccessGrantQueryService = historyAccessGrantQueryService;
     }
 
     @Override
@@ -248,5 +253,12 @@ public class ProfileContextFacadeImpl implements ProfileContextFacade {
                 new ClinicId(clinicId),
                 new PetId(petId)
         );
+    }
+
+    @Override
+    public boolean hasActiveHistoryAccess(Long clinicId, Long petId) {
+
+        return isPetPatientOfClinic(clinicId, petId)
+                && historyAccessGrantQueryService.hasActiveAccess(clinicId, petId);
     }
 }
