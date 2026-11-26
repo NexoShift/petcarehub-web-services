@@ -1,5 +1,6 @@
 package com.nexoshift.petcarehub.aiassistance.application.internal.outboundservices.acl;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -14,4 +15,10 @@ public interface ExternalClinicalAttentionService {
 
   /** True si la consulta está IN_PROGRESS (solo ahí el vet registra datos). */
   boolean isConsultationInProgress(Long consultationId);
+
+  /** Any consultation as an AI background. Empty if it does not exist. */
+  Optional<ConsultationBackground> fetchConsultation(Long consultationId);
+
+  /** Completed consultations of a pet, newest first. */
+  List<ConsultationBackground> fetchConsultationsByPetId(Long petId);
 }
