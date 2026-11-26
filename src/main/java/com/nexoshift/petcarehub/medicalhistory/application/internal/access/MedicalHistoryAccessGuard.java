@@ -7,6 +7,7 @@ import com.nexoshift.petcarehub.medicalhistory.domain.model.valueobjects.Reporte
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
+import java.util.function.Predicate;
 
 /**
  * Access rules of Medical History.
@@ -14,6 +15,8 @@ import java.util.Optional;
  *   <li>Read and allergies: the owner of the pet or a veterinarian of a clinic where the pet is
  *   a patient.</li>
  *   <li>Vaccinations: only a veterinarian of a clinic where the pet is a patient.</li>
+ *   <li>A veterinarian sees the vaccinations and timeline of OTHER clinics only while the
+ *   owner's access grant is active; allergies are always visible.</li>
  * </ul>
  */
 @Component
@@ -47,6 +50,25 @@ public class MedicalHistoryAccessGuard {
     throw new MedicalHistoryAccessDeniedException(
         "Only the owner or a veterinarian of a clinic where the pet is a patient can access"
             + " its medical history");
+  }
+
+  /**
+   * Like {@link #requireCanAccess}, and says which clinics' records the user may see: all for
+   * the owner or with the owner's permission, otherwise only the veterinarian's clinic.
+   */
+  public Predicate<Long> requireVisibleClinics(Long userId, Long petId) {
+    requirePet(petId);
+    if (isOwner(userId, petId)) {
+      return clinicId -> true;
+    }
+    var veterinarian = treatingVeterinarian(userId, petId)
+        .orElseThrow(() -> new MedicalHistoryAccessDeniedException(
+            "Only the owner or a veterinarian of a clinic where the pet is a patient can access"
+                + " its medical history"));
+    if (profiles.hasActiveHistoryAccess(veterinarian.clinicId(), petId)) {
+      return clinicId -> true;
+    }
+    return veterinarian.clinicId()::equals;
   }
 
   public TreatingVeterinarian requireTreatingVeterinarian(Long userId, Long petId) {

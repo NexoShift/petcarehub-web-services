@@ -1,6 +1,6 @@
 package com.nexoshift.petcarehub.medicalhistory.interfaces.rest.transform;
 
-import com.nexoshift.petcarehub.medicalhistory.domain.model.aggregates.MedicalHistory;
+import com.nexoshift.petcarehub.medicalhistory.domain.model.valueobjects.VisibleMedicalHistory;
 import com.nexoshift.petcarehub.medicalhistory.domain.model.entities.Allergy;
 import com.nexoshift.petcarehub.medicalhistory.domain.model.entities.MedicalHistoryEntry;
 import com.nexoshift.petcarehub.medicalhistory.domain.model.entities.VaccinationRecord;
@@ -14,13 +14,13 @@ public final class MedicalHistoryResourceFromEntityAssembler {
   private MedicalHistoryResourceFromEntityAssembler() {
   }
 
-  public static MedicalHistoryResource toResourceFromEntity(MedicalHistory history) {
-    return new MedicalHistoryResource(history.getPetIdValue(),
-        history.getAllergies().stream()
+  public static MedicalHistoryResource toResourceFromEntity(VisibleMedicalHistory history) {
+    return new MedicalHistoryResource(history.petId(),
+        history.allergies().stream()
             .map(MedicalHistoryResourceFromEntityAssembler::toResource).toList(),
-        history.getVaccinations().stream()
+        history.vaccinations().stream()
             .map(MedicalHistoryResourceFromEntityAssembler::toResource).toList(),
-        history.getEntries().stream()
+        history.entries().stream()
             .map(MedicalHistoryResourceFromEntityAssembler::toResource).toList());
   }
 
