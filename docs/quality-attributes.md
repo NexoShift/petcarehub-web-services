@@ -57,7 +57,7 @@ Additional non-functional requirements from the report:
 - **Fault isolation**: provider errors and timeouts are translated into `AiProviderUnavailableException`, which the global error handler returns as **`503 Service Unavailable`**. No partial or invented result is stored.
 - **Bounded context isolation** (ADR-001, ADR-004): consultations, exams, profiles and IAM do not depend on AI Assistance, so they keep working when the provider is down.
 - **Optional step**: the images step of the consultation is optional; a consultation can be completed without any AI analysis.
-- **Degradation mode**: the `fake` provider (`AI_VISION_PROVIDER=fake`) allows working without the external service in development and demos.
+- **Fail fast**: the API does not start without the Roboflow key and models; if Roboflow fails at runtime the analysis is saved `FAILED`, the credit is released and the API answers `503`.
 
 **Verification:** unit tests of `VisionAnalysisCommandServiceImpl` cover the provider-unavailable case.
 

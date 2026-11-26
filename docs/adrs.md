@@ -19,6 +19,10 @@ This document records the main architectural decisions of the **PetCare Hub Plat
 | [ADR-013](#adr-013-git-flow-conventional-commits-and-semantic-versioning) | Git Flow, Conventional Commits and Semantic Versioning | Accepted | 2026-10-23 |
 | [ADR-014](#adr-014-medical-history-built-from-integration-events) | Medical history built from integration events | Accepted | 2026-11-25 |
 | [ADR-015](#adr-015-pluggable-llm-provider-with-a-fake-for-development) | Pluggable LLM provider with a fake for development | Accepted | 2026-11-25 |
+| [ADR-016](#adr-016-active-subscription-required-and-ai-credits-with-reservations) | Active subscription required and AI credits with reservations | Accepted | 2026-11-25 |
+| [ADR-017](#adr-017-owner-consent-for-patients-and-temporary-history-access) | Owner consent for patients and temporary history access | Accepted | 2026-11-25 |
+| [ADR-018](#adr-018-sign-in-with-google-verifying-the-id-token-in-the-backend) | Sign in with Google verifying the ID token in the backend | Accepted | 2026-11-25 |
+| [ADR-019](#adr-019-only-real-services-outside-the-tests-and-required-settings-at-startup) | Only real services outside the tests and required settings at startup | Accepted | 2026-11-25 |
 
 ---
 
@@ -338,3 +342,94 @@ The application layer depends on an `LlmService` port. Two adapters implement it
 - ✅ Tests and demos run without a key and without cost.
 - ✅ The provider can change without touching the domain.
 - ⚠️ The fake answers do not show the real quality of the model.
+
+---
+
+## ADR-016: Active subscription required and AI credits with reservations
+
+**Status:** Accepted
+
+### Context
+The business model limits pets, veterinarians and AI usage by plan. An AI call can fail after the credit check, and the user should not lose a credit for a failed answer.
+
+### Decision
+Profiles asks Subscriptions (through its ACL facade) before registering a pet or a veterinarian: without an active subscription it answers `403`, and at the plan limit `409`. AI Assistance **reserves** a credit before calling the model, **confirms** it when the answer arrives and **releases** it when the model fails. A simulated payment endpoint, enabled only by `SUBSCRIPTIONS_SIMULATED_PAYMENTS_ENABLED`, activates plans in development and demos.
+
+### Alternatives considered
+- **Check the limit and consume after the call:** simpler, but two parallel calls could exceed the limit.
+- **Let anyone use the platform without a plan:** easier onboarding, but no business model.
+
+### Consequences
+- ✅ Limits hold even with concurrent requests.
+- ✅ Failed AI calls do not cost credits.
+- ⚠️ Accounts created before this release need a subscription to keep registering pets or veterinarians.
+
+---
+
+## ADR-017: Owner consent for patients and temporary history access
+
+**Status:** Accepted
+
+### Context
+Any clinic could register any pet as a patient by its id and then read its whole history, including records made by other clinics. The clinical history is sensitive data of the owner.
+
+### Decision
+- To register a patient, the clinic must send the **pet code** that the owner shares with it; a wrong code answers `403`.
+- A clinic always sees the records it made. It sees the consultations, exams, vaccinations and timeline entries of **other clinics** only while the owner grants it a **`HistoryAccessGrant`** (Profiles) of 1 to 72 hours. The owner can revoke it at any time.
+- **Allergies** are always visible to the clinics where the pet is a patient, because ignoring them can harm the pet.
+- Clinical Attention, Clinical Exams, Medical History and AI Assistance ask Profiles through their ACL facades.
+
+### Alternatives considered
+- **Every patient clinic sees everything:** simpler, but without the owner's consent.
+- **Permanent permissions:** fewer steps for the owner, but access is easily forgotten.
+
+### Consequences
+- ✅ The owner decides who sees the history and for how long.
+- ✅ The AI assistant only uses backgrounds the veterinarian can see.
+- ⚠️ A new clinic sees only allergies and its own records until the owner grants access.
+
+---
+
+## ADR-018: Sign in with Google verifying the ID token in the backend
+
+**Status:** Accepted
+
+### Context
+Users want to sign in with their Google account from the web and mobile apps, without a new password. The backend still issues its own JWT ([ADR-006](#adr-006-stateless-authentication-with-jwt-and-bcrypt)).
+
+### Decision
+The client gets a **Google ID token** (Google Identity Services on the web, Google Sign-In on mobile) and sends it to `POST /api/v1/authentication/google-sign-in`. IAM verifies it through the `ExternalIdentityVerifier` port: Google's signature (JWKS), issuer, audience (`GOOGLE_CLIENT_ID`) and expiration, and requires a verified e-mail. An existing user is matched by e-mail; a new e-mail creates the account when the client sends `accountType`, otherwise the API answers `422 ACCOUNT_TYPE_REQUIRED`.
+
+### Alternatives considered
+- **OAuth2 authorization code flow in the backend:** the backend would keep Google sessions and redirects; more complex for a stateless API and the mobile app.
+- **A third-party identity provider (Auth0, Firebase):** less code, but another service and account to manage.
+
+### Consequences
+- ✅ No Google secret is needed in the backend; the client id is public.
+- ✅ Web and mobile use the same endpoint.
+- ⚠️ Accounts created with Google get a random password; the user can set one with password recovery.
+
+---
+
+## ADR-019: Only real services outside the tests and required settings at startup
+
+**Status:** Accepted
+
+### Context
+Until 1.4.0 the API could run with a fake LLM, a fake vision model, demo pets and without Stripe or Google settings. That helped the first demos, but a missing variable in production silently showed demo answers or broke the payment only when a customer tried to pay.
+
+### Decision
+- Outside the automated tests the API only uses real services: Stripe, Google, OpenAI and Roboflow. The fake LLM, the fake vision model and the demo stubs live in `src/test` and are selected only by the `test` profile.
+- The settings of those services have **no default values**. The API **does not start** if one is missing or malformed (`STRIPE_*`, `GOOGLE_CLIENT_ID`, `OPENAI_API_KEY`, `ROBOFLOW_*`), and the error names each variable.
+- Simulated payments are off by default in every profile; `SUBSCRIPTIONS_SIMULATED_PAYMENTS_ENABLED=true` turns them on only on purpose (for example to seed data) and never with real users.
+- The test profile uses placeholder values that never reach the external services. The opt-in live tests use the real Stripe test-mode keys when they are present.
+
+### Alternatives considered
+- **Optional settings that answer `503`:** the API always starts, but a bad deployment is discovered late, by a user.
+- **Fake providers selectable in production:** cheaper demos, but the product could show invented clinical answers.
+
+### Consequences
+- ✅ A misconfigured deployment fails at once, with a clear message, instead of failing in front of users.
+- ✅ The product never shows demo data.
+- ⚠️ Every developer needs test-mode keys (Stripe, Google, OpenAI, Roboflow) to run the API locally; the tests do not need them.
+- ⚠️ Local use of OpenAI and Roboflow spends real credit.
