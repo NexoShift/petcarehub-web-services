@@ -10,9 +10,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
-/** Offline LLM used for development, tests and as a fallback during demos. */
+/**
+ * Offline LLM for the automated tests only (ai.llm.provider=fake in the test profile), so
+ * they never spend OpenAI credit. It is not part of the application.
+ */
 @Service
-@ConditionalOnProperty(name = "ai.llm.provider", havingValue = "fake", matchIfMissing = true)
+@ConditionalOnProperty(name = "ai.llm.provider", havingValue = "fake")
 public class FakeLlmServiceImpl implements LlmService {
 
   static final String FAIL_TRIGGER = "#fail";

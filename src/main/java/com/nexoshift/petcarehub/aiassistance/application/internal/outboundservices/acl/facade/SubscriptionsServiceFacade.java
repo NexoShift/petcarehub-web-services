@@ -2,14 +2,12 @@ package com.nexoshift.petcarehub.aiassistance.application.internal.outboundservi
 
 import com.nexoshift.petcarehub.aiassistance.application.internal.outboundservices.acl.ExternalSubscriptionsService;
 import com.nexoshift.petcarehub.subscriptions.interfaces.acl.SubscriptionContextFacade;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 /**
- * Real AI credits from the Subscriptions context (ACL). Active with ai.acl.mode=facade.
+ * Real AI credits from the Subscriptions context (ACL).
  */
 @Service
-@ConditionalOnProperty(name = "ai.acl.mode", havingValue = "facade")
 public class SubscriptionsServiceFacade implements ExternalSubscriptionsService {
 
   private final SubscriptionContextFacade subscriptionContextFacade;

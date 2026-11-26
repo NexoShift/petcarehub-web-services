@@ -7,15 +7,13 @@ import com.nexoshift.petcarehub.profiles.interfaces.acl.ProfileContextFacade;
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.Optional;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 /**
- * Real pets from the Profiles context (ACL). Active with ai.acl.mode=facade.
+ * Real pets from the Profiles context (ACL).
  * Translates Profiles' snapshot into the anonymous PetSummary the AI context uses.
  */
 @Service
-@ConditionalOnProperty(name = "ai.acl.mode", havingValue = "facade")
 public class ProfilesServiceFacade implements ExternalProfilesService {
 
   private final ProfileContextFacade profileContextFacade;

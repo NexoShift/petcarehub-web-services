@@ -9,12 +9,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 /**
- * Offline vision model for development, tests and as a demo fallback. It always answers the
+ * Offline vision model for the automated tests only (ai.vision.provider=fake in the test
+ * profile), so they never call Roboflow. It is not part of the application. It always answers the
  * same, with the real class names. The low-confidence predictions are there to show that
  * the domain discards them (skin under 50 %, radiograph under 20 %).
  */
 @Service
-@ConditionalOnProperty(name = "ai.vision.provider", havingValue = "fake", matchIfMissing = true)
+@ConditionalOnProperty(name = "ai.vision.provider", havingValue = "fake")
 public class FakeVisionModelServiceImpl implements VisionModelService {
 
   @Override
