@@ -1,14 +1,33 @@
 package com.nexoshift.petcarehub.aiassistance.application.internal.outboundservices.acl.stub;
 
 import com.nexoshift.petcarehub.aiassistance.application.internal.outboundservices.acl.ExternalSubscriptionsService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
-/** Sprint 1: AI usage is not limited yet (EP05 arrives in Sprint 2). */
+/** Stub mode (ai.acl.mode=stub): AI usage is not limited. Only for isolated demos. */
 @Service
+@ConditionalOnProperty(name = "ai.acl.mode", havingValue = "stub", matchIfMissing = true)
 public class SubscriptionsServiceStub implements ExternalSubscriptionsService {
 
+  private static final Long NO_RESERVATION = 0L;
+
   @Override
-  public void ensureAiUsageAllowed(Long veterinarianId) {
-    // always allowed
+  public Long reserveComputerVisionCredit(Long requesterUserId) {
+    return NO_RESERVATION;
+  }
+
+  @Override
+  public Long reserveLlmCredit(Long requesterUserId) {
+    return NO_RESERVATION;
+  }
+
+  @Override
+  public void confirmCredit(Long reservationId) {
+    // nothing to confirm
+  }
+
+  @Override
+  public void releaseCredit(Long reservationId) {
+    // nothing to release
   }
 }
