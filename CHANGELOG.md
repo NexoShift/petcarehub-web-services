@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-11-26
+
+### Fixed
+- Tests: the second copy of the profile facade test also used account 77, which the live Stripe tests can reach in CI.
+
 ## [2.0.1] - 2026-11-26
 
 ### Fixed
