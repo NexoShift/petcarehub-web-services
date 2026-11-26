@@ -40,6 +40,11 @@ class ClinicalExamAccessGuardTest {
     public boolean isPetPatientOfClinic(Long clinicId, Long petId) {
       return clinicId == 1L && petId == 7L;
     }
+
+    @Override
+    public boolean hasActiveHistoryAccess(Long clinicId, Long petId) {
+      return false;
+    }
   };
 
   private final ExternalClinicalAttentionService clinicalAttention =

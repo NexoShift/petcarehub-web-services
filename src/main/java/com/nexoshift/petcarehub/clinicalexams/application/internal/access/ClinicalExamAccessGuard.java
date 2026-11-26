@@ -9,13 +9,18 @@ import com.nexoshift.petcarehub.clinicalexams.domain.model.aggregates.ClinicalEx
 import com.nexoshift.petcarehub.clinicalexams.domain.model.valueobjects.VeterinarianId;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+import java.util.function.Predicate;
+
 /**
  * Access rules of Clinical Exams.
  * <ul>
  *   <li>Request: a veterinarian of the clinic where the consultation takes place.</li>
  *   <li>Write (start, result, validate, files, complete, cancel): a veterinarian of the clinic
  *   of the exam. The exam keeps the clinic, so it does not depend on the consultation.</li>
- *   <li>Read: a veterinarian of that clinic, or the owner of the pet.</li>
+ *   <li>Read: the owner of the pet or a veterinarian of the clinic of the exam. A veterinarian of
+ *   ANOTHER clinic where the pet is a patient reads it only while the owner's access grant is
+ *   active (permission by hours, in Profiles).</li>
  * </ul>
  */
 @Component
@@ -67,14 +72,9 @@ public class ClinicalExamAccessGuard {
         return veterinarianId;
     }
 
-    /** The owner of the pet or a veterinarian of the clinic of the exam. */
+    /** The owner, a veterinarian of the clinic of the exam, or another clinic with permission. */
     public void requireCanRead(Long userId, ClinicalExam exam) {
-        if (isOwner(userId, exam.getPetId())) {
-            return;
-        }
-        var clinicId = profiles.fetchVeterinarianIdByUserId(userId)
-                .flatMap(profiles::fetchClinicIdByVeterinarianId);
-        if (clinicId.isEmpty() || !clinicId.get().equals(exam.getClinicId())) {
+        if (!canReadRecordOf(userId, exam.getPetId(), exam.getClinicId())) {
             throw new ClinicalExamAccessDeniedException();
         }
     }
@@ -86,28 +86,48 @@ public class ClinicalExamAccessGuard {
         requireCanReadConsultation(userId, consultationId, petId);
     }
 
-    /** Exams of a pet: its owner or a veterinarian of a clinic where the pet is a patient. */
-    public void requireCanReadPet(Long userId, Long petId) {
+    /**
+     * Exams of a pet: its owner or a veterinarian of a clinic where the pet is a patient.
+     *
+     * @return which clinics' exams the user may see: all of them for the owner or with the
+     *         owner's permission; otherwise only those of the veterinarian's clinic
+     */
+    public Predicate<Long> requireCanReadPet(Long userId, Long petId) {
         if (isOwner(userId, petId)) {
-            return;
+            return clinicId -> true;
         }
-        var clinicId = profiles.fetchVeterinarianIdByUserId(userId)
-                .flatMap(profiles::fetchClinicIdByVeterinarianId);
+        var clinicId = veterinarianClinic(userId);
         if (clinicId.isEmpty() || !profiles.isPetPatientOfClinic(clinicId.get(), petId)) {
+            throw new ClinicalExamAccessDeniedException();
+        }
+        if (profiles.hasActiveHistoryAccess(clinicId.get(), petId)) {
+            return examClinicId -> true;
+        }
+        return clinicId.get()::equals;
+    }
+
+    private void requireCanReadConsultation(Long userId, Long consultationId, Long petId) {
+        var consultationClinicId = clinicalAttention.fetchClinicIdByConsultationId(consultationId);
+        if (consultationClinicId.isEmpty()
+                || !canReadRecordOf(userId, petId, consultationClinicId.get())) {
             throw new ClinicalExamAccessDeniedException();
         }
     }
 
-    private void requireCanReadConsultation(Long userId, Long consultationId, Long petId) {
+    /** Owner; veterinarian of the clinic that wrote the record; or another clinic with permission. */
+    private boolean canReadRecordOf(Long userId, Long petId, Long recordClinicId) {
         if (isOwner(userId, petId)) {
-            return;
+            return true;
         }
-        var consultationClinicId = clinicalAttention.fetchClinicIdByConsultationId(consultationId);
-        var veterinarianClinicId = profiles.fetchVeterinarianIdByUserId(userId)
+        var clinicId = veterinarianClinic(userId);
+        return clinicId.isPresent()
+                && (clinicId.get().equals(recordClinicId)
+                || profiles.hasActiveHistoryAccess(clinicId.get(), petId));
+    }
+
+    private Optional<Long> veterinarianClinic(Long userId) {
+        return profiles.fetchVeterinarianIdByUserId(userId)
                 .flatMap(profiles::fetchClinicIdByVeterinarianId);
-        if (consultationClinicId.isEmpty() || !consultationClinicId.equals(veterinarianClinicId)) {
-            throw new ClinicalExamAccessDeniedException();
-        }
     }
 
     private boolean isOwner(Long userId, Long petId) {

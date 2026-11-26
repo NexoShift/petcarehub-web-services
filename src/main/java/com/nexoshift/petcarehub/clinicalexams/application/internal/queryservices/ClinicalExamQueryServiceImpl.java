@@ -56,16 +56,20 @@ public class ClinicalExamQueryServiceImpl implements ClinicalExamQueryService {
     @Override
     @Transactional(readOnly = true)
     public List<ClinicalExam> handle(GetClinicalExamsByPetIdQuery query) {
-        accessGuard.requireCanReadPet(query.requesterUserId(), query.petId());
-        return sorted(clinicalExamRepository.findAllByPetId(new PetId(query.petId())));
+        var visibleClinic = accessGuard.requireCanReadPet(query.requesterUserId(), query.petId());
+        return sorted(clinicalExamRepository.findAllByPetId(new PetId(query.petId())).stream()
+                .filter(exam -> visibleClinic.test(exam.getClinicId()))
+                .toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ClinicalExam> handle(GetClinicalExamsByPetIdAndStatusQuery query) {
-        accessGuard.requireCanReadPet(query.requesterUserId(), query.petId());
+        var visibleClinic = accessGuard.requireCanReadPet(query.requesterUserId(), query.petId());
         return sorted(clinicalExamRepository.findAllByPetIdAndStatus(
-                new PetId(query.petId()), query.status()));
+                new PetId(query.petId()), query.status()).stream()
+                .filter(exam -> visibleClinic.test(exam.getClinicId()))
+                .toList());
     }
 
     /** Worklist of the clinic (it replaces the spreadsheet of pending exams). */
