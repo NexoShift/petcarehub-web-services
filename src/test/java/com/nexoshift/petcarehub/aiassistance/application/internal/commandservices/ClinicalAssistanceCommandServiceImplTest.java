@@ -100,7 +100,9 @@ class ClinicalAssistanceCommandServiceImplTest {
     assertEquals(AiAnalysisStatus.COMPLETED, assistance.getStatus());
     assertEquals(1, assistance.getDrafts().size());
     assertEquals("gpt-5.4-mini", assistance.getDrafts().getFirst().getModel());
-    verify(subscriptionsService).ensureAiUsageAllowed(VET_ID);
+    verify(subscriptionsService).reserveLlmCredit(VET_ID);
+    verify(subscriptionsService).confirmCredit(any());
+    verify(subscriptionsService, never()).releaseCredit(any());
   }
 
   @Test
@@ -113,6 +115,8 @@ class ClinicalAssistanceCommandServiceImplTest {
 
     assertThrows(AiProviderUnavailableException.class, () -> service.handle(request()));
     verify(repository, atLeastOnce()).save(argThat(a -> a.getStatus() == AiAnalysisStatus.FAILED));
+    verify(subscriptionsService).releaseCredit(any());
+    verify(subscriptionsService, never()).confirmCredit(any());
   }
 
   @Test

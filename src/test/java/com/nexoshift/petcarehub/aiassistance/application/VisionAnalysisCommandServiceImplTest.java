@@ -80,6 +80,7 @@ class VisionAnalysisCommandServiceImplTest {
   @Test
   @DisplayName("A skin photo is stored, analyzed and saved COMPLETED with the probable findings")
   void analyzesSkin() {
+    when(subscriptions.reserveComputerVisionCredit(VET_USER_ID)).thenReturn(7L);
     when(visionModel.detect(any(), anyString(), any())).thenReturn(new VisionModelResult("piel/1",
         List.of(new Detection("dermatitis", 0.82, 0.3, 0.25, 0.35, 0.3),
             new Detection("micosis", 0.31, 0.6, 0.6, 0.1, 0.1))));
@@ -90,7 +91,8 @@ class VisionAnalysisCommandServiceImplTest {
     assertThat(analysis.getFindings()).extracting("label").containsExactly("dermatitis");
     assertThat(analysis.getModelId()).isEqualTo("piel/1");
     assertThat(savedStatuses).containsExactly(AiAnalysisStatus.PROCESSING, AiAnalysisStatus.COMPLETED);
-    verify(subscriptions).ensureAiUsageAllowed(VET_USER_ID);
+    verify(subscriptions).confirmCredit(7L);
+    verify(subscriptions, never()).releaseCredit(any());
   }
 
   @Test
@@ -108,12 +110,15 @@ class VisionAnalysisCommandServiceImplTest {
   @Test
   @DisplayName("If the provider is down the analysis is saved FAILED and the error is 503")
   void providerDown() {
+    when(subscriptions.reserveComputerVisionCredit(VET_USER_ID)).thenReturn(7L);
     when(visionModel.detect(any(), anyString(), any()))
         .thenThrow(new AiProviderUnavailableException("roboflow", new RuntimeException("timeout")));
 
     assertThatThrownBy(() -> service.handle(command(ImageType.SKIN, TestImages.skin(300, 300))))
         .isInstanceOf(AiProviderUnavailableException.class);
     assertThat(savedStatuses).containsExactly(AiAnalysisStatus.PROCESSING, AiAnalysisStatus.FAILED);
+    verify(subscriptions).releaseCredit(7L);
+    verify(subscriptions, never()).confirmCredit(any());
   }
 
   @Test
@@ -135,6 +140,6 @@ class VisionAnalysisCommandServiceImplTest {
 
     verify(storage, never()).store(any(), anyString(), anyString());
     verify(visionModel, never()).detect(any(), anyString(), any());
-    verify(subscriptions, never()).ensureAiUsageAllowed(any());
+    verify(subscriptions, never()).reserveComputerVisionCredit(any());
   }
 }
