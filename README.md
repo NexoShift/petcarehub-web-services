@@ -200,6 +200,11 @@ All endpoints live under `/api/v1` and, except authentication, require `Authoriz
 - `POST /api/v1/clinical-consultations/{consultationId}/treatments` · `/prescriptions`: Treatments and prescriptions (1 to 15 medications) of a consultation in progress.
 - `GET /api/v1/pets/{petId}/clinical-consultations`: Consultations of a pet.
 
+### Medical History
+- `GET /api/v1/pets/{petId}/medical-history`: Allergies, vaccinations and timeline of a pet.
+- `POST /api/v1/pets/{petId}/medical-history/allergies`: Allergy reported by the owner or a veterinarian.
+- `POST /api/v1/pets/{petId}/medical-history/vaccinations`: Vaccination applied by a veterinarian.
+
 ### Clinical Exams
 - `/api/v1/clinical-exams`: Exam requests and clinic worklist (`start`, `result`, `result/validate`, `complete`, `cancel`).
 - `/api/v1/clinical-exams/{examId}/files`: Exam files (image, video, PDF up to 10 MB).
@@ -223,7 +228,7 @@ All endpoints live under `/api/v1` and, except authentication, require `Authoriz
 - **Domain-Driven Design (DDD) & CQRS:** Write operations use `CommandService`, read operations use `QueryService`.
 - **Aggregate Encapsulation:** Aggregates protect their invariants through domain business methods; state transitions (for example, a consultation `CREATED → IN_PROGRESS → COMPLETED`) are validated inside the aggregate.
 - **Bounded Context Integration:** Contexts communicate only through ACL facades (`ContextFacade`) and outbound services, never through another context's repositories.
-- **Domain Events:** Aggregates extend `AuditableAbstractAggregateRoot` and register events (`AccountRegistered`, `ClinicalConsultationCompleted`) that are handled by application event handlers.
+- **Domain Events:** Aggregates extend `AuditableAbstractAggregateRoot` and register events (`AccountRegistered`, `ClinicalConsultationCompleted`, `ExamResultValidated`) that are handled by application event handlers. Clinical Attention and Clinical Exams also publish integration events, from which Medical History builds the timeline of each pet.
 - **Immutable Clinical Records:** Completed or cancelled consultations cannot be modified; corrections are added as re-evaluations.
 - **Access Rules:** A veterinarian only works with patients of their own clinic; a pet owner only sees their own pets and **validated** exam results.
 - **Centralized Error Handling:** A global `@RestControllerAdvice` maps domain exceptions to `400`, `401`, `403`, `404`, `409`, `413`, and `422` with a common `ErrorResource` (status, error, message, path, timestamp, details).
@@ -250,6 +255,7 @@ The main decisions are recorded as ADRs in [docs/adrs.md](docs/adrs.md):
 | [011](docs/adrs.md#adr-011-immutable-clinical-records) | Immutable clinical records |
 | [012](docs/adrs.md#adr-012-docker-and-azure-container-apps-with-github-actions) | Docker, Azure Container Apps and GitHub Actions |
 | [013](docs/adrs.md#adr-013-git-flow-conventional-commits-and-semantic-versioning) | Git Flow, Conventional Commits and SemVer |
+| [014](docs/adrs.md#adr-014-medical-history-built-from-integration-events) | Medical history built from integration events |
 
 ---
 

@@ -22,7 +22,8 @@ public class ClinicalConsultationCompletedEventHandler {
   @EventListener
   public void on(ClinicalConsultationCompletedEvent event) {
     eventPublisher.publishEvent(new ClinicalConsultationCompletedIntegrationEvent(
-        event.consultationId(), event.petId(), event.veterinarianId(), event.primaryDiagnosis(),
-        event.completedAt()));
+            event.consultationId(), event.petId(), event.veterinarianId(), event.clinicId(),
+            event.primaryDiagnosis(),
+            event.completedAt()));
   }
 }
