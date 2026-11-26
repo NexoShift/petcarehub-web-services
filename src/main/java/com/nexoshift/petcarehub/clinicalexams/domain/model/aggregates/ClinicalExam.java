@@ -118,7 +118,8 @@ public class ClinicalExam extends AuditableAbstractAggregateRoot<ClinicalExam> {
         }
         result.validate(validator);
         registerEvent(new ExamResultValidatedEvent(
-                getId(), result.getId(), getPetId(), result.getValidatedAt()));
+                getId(), result.getId(), getPetId(), getClinicId(), getConsultationId(),
+                type.name(), result.getSummary(), result.getValidatedAt()));
     }
 
     public void ensureCanAttachFile(String contentType) {
