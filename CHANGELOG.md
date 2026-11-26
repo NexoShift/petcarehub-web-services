@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-26
+
+### Fixed
+- Tests: two integration tests created a clinic for the same account, so the build failed depending on the test order.
+
 ## [2.0.0] - 2026-11-26
 
 This is the final release of the project. It contains breaking changes for API clients: read the **BREAKING** items before updating the frontend or the mobile app.
