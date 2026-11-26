@@ -17,6 +17,7 @@ This document records the main architectural decisions of the **PetCare Hub Plat
 | [ADR-011](#adr-011-immutable-clinical-records) | Immutable clinical records | Accepted | 2026-10-24 |
 | [ADR-012](#adr-012-docker-and-azure-container-apps-with-github-actions) | Docker and Azure Container Apps with GitHub Actions | Accepted | 2026-11-11 |
 | [ADR-013](#adr-013-git-flow-conventional-commits-and-semantic-versioning) | Git Flow, Conventional Commits and Semantic Versioning | Accepted | 2026-10-23 |
+| [ADR-014](#adr-014-medical-history-built-from-integration-events) | Medical history built from integration events | Accepted | 2026-11-25 |
 
 ---
 
@@ -294,3 +295,24 @@ Use **Git Flow** (`main`, `develop`, `feature/*`, `release/*`, `hotfix/*`), **Co
 ### Consequences
 - ✅ Readable history and clear versions per sprint.
 - ⚠️ More branches and merges to manage.
+
+---
+
+## ADR-014: Medical history built from integration events
+
+**Status:** Accepted
+
+### Context
+The medical history of a pet gathers what happens in other contexts (completed consultations, validated exam results). If Medical History read those tables directly, the contexts would be coupled and the history could show unfinished records.
+
+### Decision
+**Medical History** owns allergies, vaccinations and a **timeline** per pet. The timeline is fed only by **integration events** that each context publishes in its `interfaces/acl/events` package: `ClinicalConsultationCompletedIntegrationEvent` (Clinical Attention) and `ExamResultValidatedIntegrationEvent` (Clinical Exams). Medical History listens to them with Spring `@EventListener` handlers. Each entry keeps the clinic that produced it.
+
+### Alternatives considered
+- **Query the other contexts on every read:** always fresh, but couples the contexts and slows down the history.
+- **Shared tables:** simple, but breaks the bounded context boundaries.
+
+### Consequences
+- ✅ Only finished and validated records reach the history.
+- ✅ Clinical Attention and Clinical Exams do not know Medical History.
+- ⚠️ The timeline is a copy: a record changed after the event must publish a new event.
