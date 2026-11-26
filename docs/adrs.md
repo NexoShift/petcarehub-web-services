@@ -18,6 +18,7 @@ This document records the main architectural decisions of the **PetCare Hub Plat
 | [ADR-012](#adr-012-docker-and-azure-container-apps-with-github-actions) | Docker and Azure Container Apps with GitHub Actions | Accepted | 2026-11-11 |
 | [ADR-013](#adr-013-git-flow-conventional-commits-and-semantic-versioning) | Git Flow, Conventional Commits and Semantic Versioning | Accepted | 2026-10-23 |
 | [ADR-014](#adr-014-medical-history-built-from-integration-events) | Medical history built from integration events | Accepted | 2026-11-25 |
+| [ADR-015](#adr-015-pluggable-llm-provider-with-a-fake-for-development) | Pluggable LLM provider with a fake for development | Accepted | 2026-11-25 |
 
 ---
 
@@ -316,3 +317,24 @@ The medical history of a pet gathers what happens in other contexts (completed c
 - ✅ Only finished and validated records reach the history.
 - ✅ Clinical Attention and Clinical Exams do not know Medical History.
 - ⚠️ The timeline is a copy: a record changed after the event must publish a new event.
+
+---
+
+## ADR-015: Pluggable LLM provider with a fake for development
+
+**Status:** Accepted
+
+### Context
+The assistant writes a SOAP draft for the veterinarian and answers owners in plain language. Calling a paid model in every test, demo or local run costs money and makes tests depend on the network.
+
+### Decision
+The application layer depends on an `LlmService` port. Two adapters implement it: **`fake`** (default, offline, deterministic) and **`openai`** (Chat Completions with `gpt-5.4-mini` and a JSON response for the SOAP draft). `AI_LLM_PROVIDER` selects the adapter. The veterinarian must accept, edit or reject every draft; only a confirmed draft produces the PDF report (see [ADR-010](#adr-010-ai-supports-the-veterinarian-and-never-diagnoses)).
+
+### Alternatives considered
+- **Call OpenAI everywhere:** simpler, but tests would cost money and fail without network.
+- **A self-hosted open model:** no usage cost, but needs a GPU server.
+
+### Consequences
+- ✅ Tests and demos run without a key and without cost.
+- ✅ The provider can change without touching the domain.
+- ⚠️ The fake answers do not show the real quality of the model.
