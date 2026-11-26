@@ -66,8 +66,20 @@ public class VisionAnalysisCommandServiceImpl implements VisionAnalysisCommandSe
   public VisionAnalysis handle(RequestVisionAnalysisCommand command) {
     ensurePetCanBeAnalyzed(command);
     imageValidator.validate(command.image(), command.imageType());   // 422 before spending
-    subscriptionsService.ensureAiUsageAllowed(command.requesterId());
+    // One computer vision credit: confirmed if the model answers, released if anything fails.
+    var reservationId = subscriptionsService.reserveComputerVisionCredit(command.requesterId());
+    try {
+      var analysis = analyze(command);
+      subscriptionsService.confirmCredit(reservationId);
+      return analysis;
+    } catch (RuntimeException exception) {
+      subscriptionsService.releaseCredit(reservationId);
+      throw exception;
+    }
+  }
 
+  /** Stores the image, calls the model and saves the findings (or the FAILED status). */
+  private VisionAnalysis analyze(RequestVisionAnalysisCommand command) {
     var stored = fileStorageService.store(command.image(), command.contentType(), FOLDER);
     var image = new ImageReference(stored.storageKey(), stored.contentType(), stored.sizeBytes());
 
