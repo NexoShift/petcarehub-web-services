@@ -52,7 +52,7 @@ class ProfileContextFacadeImplIntegrationTest {
 
   @Test
   void knowsWhichPetsArePatientsOfAClinic() {
-    clinicPatientRepository.save(new ClinicPatient(new CreateClinicPatientCommand(3L, 20L)));
+    clinicPatientRepository.save(new ClinicPatient(new CreateClinicPatientCommand(3L, 20L, "PET-AAAAAAAA")));
 
     assertThat(facade.isPetPatientOfClinic(3L, 20L)).isTrue();
     assertThat(facade.isPetPatientOfClinic(4L, 20L)).isFalse();   // otra clínica
