@@ -62,7 +62,7 @@ class ProfileContextFacadeImplIntegrationTest {
 
   @Test
   void onlyActiveRoomsOfTheSameClinicCount() {
-    var clinic = new Clinic(new AccountId(77L));
+    var clinic = new Clinic(new AccountId(998_077L));
     clinic.addConsultingRoom("Consultorio 1", "General");
     clinic.addConsultingRoom("Consultorio 2", "Cirugía");
     clinic = clinicRepository.saveAndFlush(clinic);
