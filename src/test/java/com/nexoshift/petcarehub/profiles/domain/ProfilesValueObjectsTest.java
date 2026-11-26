@@ -61,7 +61,7 @@ class ProfilesValueObjectsTest {
   @Test
   @DisplayName("Registering a patient keeps the clinic, the pet and the date")
   void clinicPatient() {
-    var patient = new ClinicPatient(new CreateClinicPatientCommand(3L, 20L));
+    var patient = new ClinicPatient(new CreateClinicPatientCommand(3L, 20L, "PET-AAAAAAAA"));
 
     assertThat(patient.getClinicId().clinicId()).isEqualTo(3L);
     assertThat(patient.getPetId().petId()).isEqualTo(20L);

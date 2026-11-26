@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
 
@@ -25,6 +26,9 @@ public final class PetCareApiClient {
   public static final String PASSWORD = "Password123!";
 
   private final MockMvc mockMvc;
+
+  /** Código de cada mascota creada (PET-XXXXXXXX): la clínica lo necesita para registrarla. */
+  private final Map<Long, String> petCodes = new ConcurrentHashMap<>();
 
   public PetCareApiClient(MockMvc mockMvc) {
     this.mockMvc = mockMvc;
@@ -225,13 +229,20 @@ public final class PetCareApiClient {
         "birthDate", "2023-09-15",
         "sex", "MALE"));
     assertThat(pet.status()).as("pet " + pet.body()).isEqualTo(201);
+    petCodes.put(pet.number("id"), pet.text("petCode"));
     return new OwnerSetup(owner, petOwnerId, pet.number("id"));
   }
 
-  /** La clínica registra la mascota como paciente. */
+  /** El código que el dueño comparte con la clínica (consentimiento). */
+  public String petCode(long petId) {
+    return petCodes.get(petId);
+  }
+
+  /** La clínica registra la mascota como paciente, con el código que le dio el dueño. */
   public void registerPatient(ClinicSetup clinic, long petId) throws Exception {
     var reply = send(HttpMethod.POST, "/api/v1/clinics/" + clinic.clinicId() + "/patients",
-        clinic.holder().token(), "{\"petId\": " + petId + "}");
+        clinic.holder().token(),
+        "{\"petId\": %d, \"petCode\": \"%s\"}".formatted(petId, petCode(petId)));
     assertThat(reply.status()).as("patient " + reply.body()).isBetween(200, 201);
   }
 

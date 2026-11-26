@@ -21,7 +21,8 @@ public class CreateClinicPatientCommandFromResourceAssembler {
 
         return new CreateClinicPatientCommand(
                 clinicId,
-                resource.petId()
+                resource.petId(),
+                resource.petCode()
         );
     }
 }
