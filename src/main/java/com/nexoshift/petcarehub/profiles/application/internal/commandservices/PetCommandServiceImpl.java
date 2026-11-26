@@ -1,6 +1,7 @@
 package com.nexoshift.petcarehub.profiles.application.internal.commandservices;
 
 import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.IamExternalService;
+import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.SubscriptionsExternalService;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.PetNotFoundException;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.PetOwnerNotFoundException;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAllowedException;
@@ -8,10 +9,12 @@ import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Pet;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.CreatePetCommand;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdatePetCommand;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdatePetImageCommand;
+import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.OwnerId;
 import com.nexoshift.petcarehub.profiles.domain.services.PetCommandService;
 import com.nexoshift.petcarehub.profiles.infrastructure.persistence.jpa.repositories.PetOwnerRepository;
 import com.nexoshift.petcarehub.profiles.infrastructure.persistence.jpa.repositories.PetRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -28,6 +31,7 @@ public class PetCommandServiceImpl implements PetCommandService {
     private final PetRepository petRepository;
     private final PetOwnerRepository petOwnerRepository;
     private final IamExternalService iamExternalService;
+    private final SubscriptionsExternalService subscriptionsExternalService;
 
     /**
      * Constructs a pet command service.
@@ -35,24 +39,33 @@ public class PetCommandServiceImpl implements PetCommandService {
      * @param petRepository the pet repository
      * @param petOwnerRepository the pet owner repository
      * @param iamExternalService the Iam External service
+     * @param subscriptionsExternalService the Subscriptions External service
      */
     public PetCommandServiceImpl(
             PetRepository petRepository,
             PetOwnerRepository petOwnerRepository,
-            IamExternalService iamExternalService) {
+            IamExternalService iamExternalService,
+            SubscriptionsExternalService subscriptionsExternalService) {
 
         this.petRepository = petRepository;
         this.petOwnerRepository = petOwnerRepository;
         this.iamExternalService = iamExternalService;
+        this.subscriptionsExternalService = subscriptionsExternalService;
     }
 
     /**
      * Creates a pet profile associated with an existing pet owner.
      *
      * @param command the create pet command
+     * <p>
+     *     The owner's account needs an active subscription and the plan
+     *     must allow one more pet.
+     * </p>
+     *
      * @return the created pet identifier
      */
     @Override
+    @Transactional
     public Long handle(CreatePetCommand command) {
 
         var petOwner = petOwnerRepository.findById(command.ownerId())
@@ -65,6 +78,12 @@ public class PetCommandServiceImpl implements PetCommandService {
             throw new ProfileOperationNotAllowedException(
                     "You cannot register a pet for another owner");
         }
+
+        // Lock the subscription before counting, so two requests cannot pass the limit together.
+        var accountId = iamExternalService.fetchAccountIdByUserId(authenticatedUserId);
+        subscriptionsExternalService.lockActiveSubscription(accountId);
+        var registeredPets = petRepository.countByOwnerId(new OwnerId(petOwner.getId()));
+        subscriptionsExternalService.ensurePetRegistrationAllowed(accountId, registeredPets);
 
         var pet = new Pet(command);
 
