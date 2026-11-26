@@ -31,6 +31,9 @@ public interface ExternalProfilesService {
   /** NUEVO: true si la mascota está registrada como paciente de la clínica. */
   boolean isPetPatientOfClinic(PetId petId, ClinicId clinicId);
 
+  /** True while the owner lets this clinic see the consultations of other clinics. */
+  boolean hasActiveHistoryAccess(PetId petId, ClinicId clinicId);
+
   /** NUEVO: clínica donde trabaja el veterinario. Empty when the veterinarian does not exist. */
   Optional<ClinicId> fetchClinicIdByVeterinarianId(VeterinarianId veterinarianId);
 }

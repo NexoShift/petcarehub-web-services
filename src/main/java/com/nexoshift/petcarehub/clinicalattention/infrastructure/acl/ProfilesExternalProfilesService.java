@@ -66,6 +66,11 @@ public class ProfilesExternalProfilesService implements ExternalProfilesService 
   }
 
   @Override
+  public boolean hasActiveHistoryAccess(PetId petId, ClinicId clinicId) {
+    return profileContextFacade.hasActiveHistoryAccess(clinicId.clinicId(), petId.petId());
+  }
+
+  @Override
   public Optional<ClinicId> fetchClinicIdByVeterinarianId(VeterinarianId veterinarianId) {
     return positive(
         profileContextFacade.fetchClinicIdByVeterinarianId(veterinarianId.veterinarianId()))
