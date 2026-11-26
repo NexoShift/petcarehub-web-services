@@ -50,6 +50,7 @@ public class ClinicPatientCommandServiceImpl implements ClinicPatientCommandServ
 
     /**
      * Registers a pet as a patient of a clinic.
+     * The clinic must send the pet code shared by the owner (consent).
      *
      * @param command the create clinic patient command
      * @return the created clinic patient identifier
@@ -76,8 +77,14 @@ public class ClinicPatientCommandServiceImpl implements ClinicPatientCommandServ
             throw new ProfileOperationNotAllowedException("You are not authorized to register patients in this clinic");
         }
 
-        if (!petRepository.existsById(command.petId())) {
-            throw new PetNotFoundException(command.petId());
+        var pet = petRepository.findById(command.petId())
+                .orElseThrow(() -> new PetNotFoundException(command.petId()));
+
+        // The pet code is the owner's consent: without it a clinic could register any pet
+        // id and read its history. The same message for every mismatch reveals nothing.
+        if (!pet.getPetCode().value().equalsIgnoreCase(command.petCode().trim())) {
+            throw new ProfileOperationNotAllowedException(
+                    "The pet code does not match: ask the owner for the pet's code");
         }
 
         var clinicId = new ClinicId(command.clinicId());
