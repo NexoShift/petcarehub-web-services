@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-26
+
+This is the final release of the project. It contains breaking changes for API clients: read the **BREAKING** items before updating the frontend or the mobile app.
+
+### Added
+- **IAM**
+    - Sign in with Google: `POST /api/v1/authentication/google-sign-in` with a Google ID token (`GOOGLE_CLIENT_ID`).
+- **Profiles & Organization**
+    - The owner grants a clinic temporary access (1 to 72 hours) to the history recorded by other clinics, renews it and revokes it (`/api/v1/pets/{petId}/history-access-grants`).
+- **AI Assistance**
+    - AI credits: each vision analysis uses 1 computer vision credit and each LLM answer uses 1 LLM credit; the credit is released if the model fails.
+- **Platform**
+    - `SWAGGER_ENABLED` turns off Swagger UI and the OpenAPI document in production.
+    - Startup validation: the API does not start if a Stripe, Google, OpenAI or Roboflow setting is missing, and it names each one.
+
+### Changed
+- **BREAKING – Profiles**: registering a pet or a veterinarian, including the clinic holder's veterinarian profile, requires an active subscription (`403`) and respects the plan limits (`409`). Accounts without a subscription must activate a plan first.
+- **BREAKING – AI Assistance**: requires an active subscription and available credits (`403` / `409`).
+- Clinical Attention, Clinical Exams, Medical History and AI Assistance show the records of other clinics only with an active access grant of the owner. Allergies are always visible.
+- The AI assistant uses as backgrounds only the consultations the veterinarian can see.
+- **BREAKING – Configuration**: `GOOGLE_CLIENT_ID`, `OPENAI_API_KEY`, `ROBOFLOW_API_KEY`, `ROBOFLOW_SKIN_MODEL_ID` and `ROBOFLOW_RADIOGRAPH_MODEL_ID` are required. OpenAI and Roboflow are always used outside the tests.
+- **BREAKING – Subscriptions**: simulated payments are off by default also in `dev`; set `SUBSCRIPTIONS_SIMULATED_PAYMENTS_ENABLED=true` only to seed data.
+
+### Removed
+- **BREAKING**: the fake LLM, the fake vision model and the demo pets (`AI_LLM_PROVIDER=fake`, `AI_VISION_PROVIDER=fake`, `AI_ACL_MODE=stub`). They now exist only in the automated tests.
+
+### Security
+- **BREAKING**: registering a clinic patient requires the `petCode` shared by the owner (`400` without it, `403` with a wrong code).
+- A clinic no longer sees the consultations, exams, vaccinations and timeline entries recorded by other clinics without the owner's permission.
+- Test suite with 486 tests on an in-memory H2 database.
+
 ## [1.4.0] - 2026-11-25
 
 ### Added
@@ -129,7 +160,8 @@ First stable release, delivered at the end of **Sprint 1**.
 - Access rules between contexts: a veterinarian only works with patients of their clinic, and an owner only sees their own pets.
 - Owners only see exam results after a veterinarian validates them.
 
-[Unreleased]: https://github.com/NexoShift/petcarehub-web-services/compare/v1.4.0...develop
+[Unreleased]: https://github.com/NexoShift/petcarehub-web-services/compare/v2.0.0...develop
+[2.0.0]: https://github.com/NexoShift/petcarehub-web-services/compare/v1.4.0...v2.0.0
 [1.4.0]: https://github.com/NexoShift/petcarehub-web-services/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/NexoShift/petcarehub-web-services/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/NexoShift/petcarehub-web-services/compare/v1.1.0...v1.2.0

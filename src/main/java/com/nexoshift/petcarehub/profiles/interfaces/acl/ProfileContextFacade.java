@@ -126,4 +126,15 @@ public interface ProfileContextFacade {
      * @return true if the pet is registered in the clinic
      */
     boolean isPetPatientOfClinic(Long clinicId, Long petId);
+
+    /**
+     * Checks whether a clinic may see what OTHER clinics recorded about a pet.
+     * True only while the pet is its patient and the owner's access grant is active.
+     * Without it, the clinic sees only its own records.
+     *
+     * @param clinicId the clinic identifier
+     * @param petId the pet identifier
+     * @return true while the owner's grant is active
+     */
+    boolean hasActiveHistoryAccess(Long clinicId, Long petId);
 }

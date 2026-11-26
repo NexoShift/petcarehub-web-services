@@ -1,6 +1,7 @@
 package com.nexoshift.petcarehub.profiles.application.internal.commandservices;
 
 import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.IamExternalService;
+import com.nexoshift.petcarehub.profiles.application.internal.outboundservices.acl.SubscriptionsExternalService;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.ClinicNotFoundException;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileAlreadyExistsException;
 import com.nexoshift.petcarehub.profiles.domain.exceptions.ProfileOperationNotAllowedException;
@@ -9,11 +10,13 @@ import com.nexoshift.petcarehub.profiles.domain.model.aggregates.Veterinarian;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.CreateVeterinarianCommand;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdateVeterinarianCommand;
 import com.nexoshift.petcarehub.profiles.domain.model.commands.UpdateVeterinarianImageCommand;
+import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.ClinicId;
 import com.nexoshift.petcarehub.profiles.domain.model.valueobjects.UserId;
 import com.nexoshift.petcarehub.profiles.domain.services.VeterinarianCommandService;
 import com.nexoshift.petcarehub.profiles.infrastructure.persistence.jpa.repositories.ClinicRepository;
 import com.nexoshift.petcarehub.profiles.infrastructure.persistence.jpa.repositories.VeterinarianRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -30,20 +33,25 @@ public class VeterinarianCommandServiceImpl implements VeterinarianCommandServic
     private final VeterinarianRepository veterinarianRepository;
     private final ClinicRepository clinicRepository;
     private final IamExternalService iamExternalService;
+    private final SubscriptionsExternalService subscriptionsExternalService;
 
     /**
      * Constructs the veterinarian command service.
      *
      * @param veterinarianRepository the veterinarian repository
      * @param clinicRepository the clinic repository
+     * @param iamExternalService the IAM external service
+     * @param subscriptionsExternalService the Subscriptions external service
      */
     public VeterinarianCommandServiceImpl(
             VeterinarianRepository veterinarianRepository,
             ClinicRepository clinicRepository,
-            IamExternalService iamExternalService) {
+            IamExternalService iamExternalService,
+            SubscriptionsExternalService subscriptionsExternalService) {
         this.veterinarianRepository = veterinarianRepository;
         this.clinicRepository = clinicRepository;
         this.iamExternalService = iamExternalService;
+        this.subscriptionsExternalService = subscriptionsExternalService;
     }
 
 
@@ -52,11 +60,14 @@ public class VeterinarianCommandServiceImpl implements VeterinarianCommandServic
      *
      * Only an administrator belonging to the clinic account
      * can register the professional profile of a veterinarian.
+     * The clinic account needs an active subscription and the plan
+     * must allow one more veterinarian.
      *
      * @param command the create veterinarian command
      * @return the created veterinarian identifier
      */
     @Override
+    @Transactional
     public Long handle(CreateVeterinarianCommand command) {
 
         var clinic = clinicRepository.findById(command.clinicId())
@@ -117,6 +128,13 @@ public class VeterinarianCommandServiceImpl implements VeterinarianCommandServic
             throw new ProfileAlreadyExistsException(
                     "Veterinarian", command.userId());
         }
+
+        // Lock the subscription before counting, so two requests cannot pass the limit together.
+        subscriptionsExternalService.lockActiveSubscription(clinicAccountId);
+        var registeredVeterinarians =
+                veterinarianRepository.countByClinicId(new ClinicId(command.clinicId()));
+        subscriptionsExternalService.ensureVeterinarianRegistrationAllowed(
+                clinicAccountId, registeredVeterinarians);
 
         var veterinarian = new Veterinarian(command);
 

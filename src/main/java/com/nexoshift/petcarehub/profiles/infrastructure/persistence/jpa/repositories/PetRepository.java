@@ -20,6 +20,14 @@ public interface PetRepository extends JpaRepository<Pet, Long> {
     boolean existsByOwnerId(OwnerId ownerId);
 
     /**
+     * Counts the pets registered by an owner.
+     *
+     * @param ownerId the owner identifier
+     * @return the number of pets
+     */
+    long countByOwnerId(OwnerId ownerId);
+
+    /**
      * Checks whether a pet code already exists.
      *
      * @param petCode the pet code

@@ -52,15 +52,25 @@ public class OwnerExplanationCommandServiceImpl implements OwnerExplanationComma
     if (!profilesService.isPetOwnedBy(command.petId(), command.ownerUserId())) {
       throw new ForbiddenException("You can only ask about your own pets");
     }
-    subscriptionsService.ensureAiUsageAllowed(command.ownerUserId());
     var consultations = consultationsFor(command);
     var history = repository.findByPetIdAndOwnerIdOrderByIdAsc(
         new PetId(command.petId()), new UserId(command.ownerUserId()));
     var previousTurns = history.subList(Math.max(0, history.size() - MAX_PREVIOUS_TURNS),
         history.size());
-    var answer = llmService.answerOwnerQuestion(
-        promptTemplate.render(pet, consultations, previousTurns, command.question()));
-    return repository.save(new OwnerExplanation(command, answer.text(), answer.model()));
+    // One LLM credit of the owner's plan: reserved now, confirmed if the model answers,
+    // released if it fails (403 without subscription, 409 without credits left).
+    var reservationId = subscriptionsService.reserveLlmCredit(command.ownerUserId());
+    try {
+      var answer = llmService.answerOwnerQuestion(
+          promptTemplate.render(pet, consultations, previousTurns, command.question()));
+      var explanation =
+          repository.save(new OwnerExplanation(command, answer.text(), answer.model()));
+      subscriptionsService.confirmCredit(reservationId);
+      return explanation;
+    } catch (RuntimeException exception) {
+      subscriptionsService.releaseCredit(reservationId);
+      throw exception;
+    }
   }
 
   /** The referenced consultation, or the latest ones of the pet. Never another pet's data. */

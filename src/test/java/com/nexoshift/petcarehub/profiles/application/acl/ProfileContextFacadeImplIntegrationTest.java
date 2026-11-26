@@ -52,7 +52,7 @@ class ProfileContextFacadeImplIntegrationTest {
 
   @Test
   void knowsWhichPetsArePatientsOfAClinic() {
-    clinicPatientRepository.save(new ClinicPatient(new CreateClinicPatientCommand(3L, 20L)));
+    clinicPatientRepository.save(new ClinicPatient(new CreateClinicPatientCommand(3L, 20L, "PET-AAAAAAAA")));
 
     assertThat(facade.isPetPatientOfClinic(3L, 20L)).isTrue();
     assertThat(facade.isPetPatientOfClinic(4L, 20L)).isFalse();   // otra clínica
@@ -62,7 +62,7 @@ class ProfileContextFacadeImplIntegrationTest {
 
   @Test
   void onlyActiveRoomsOfTheSameClinicCount() {
-    var clinic = new Clinic(new AccountId(999_077L));
+    var clinic = new Clinic(new AccountId(77L));
     clinic.addConsultingRoom("Consultorio 1", "General");
     clinic.addConsultingRoom("Consultorio 2", "Cirugía");
     clinic = clinicRepository.saveAndFlush(clinic);

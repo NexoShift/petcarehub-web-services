@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * NUEVO. Pruebas de AI Assistance (análisis de imágenes) con Profiles y Clinical Attention
- * reales (ai.acl.mode=facade), el modelo de visión "fake" y almacenamiento local en target/.
+ * reales, el modelo de visión "fake" y almacenamiento local en target/.
  * <pre>
  *   clinic      : clínica con vet; "owner.pet" es su paciente
  *   otherClinic : otra clínica con su vet; la mascota NO es su paciente
@@ -34,7 +34,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(properties = {
     "spring.profiles.active=test",
-    "ai.acl.mode=facade",
     "ai.vision.provider=fake",
     "ai.storage.provider=local",
     "ai.storage.local-dir=target/test-uploads"})

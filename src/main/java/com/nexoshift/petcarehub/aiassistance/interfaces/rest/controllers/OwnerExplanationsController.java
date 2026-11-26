@@ -46,7 +46,7 @@ public class OwnerExplanationsController {
   }
 
   @PostMapping
-  @Operation(summary = "Ask a question about your pet (write #fail with the fake LLM to get 503)")
+  @Operation(summary = "Ask a question about your pet")
   public ResponseEntity<OwnerExplanationResource> requestOwnerExplanation(
       @Valid @RequestBody RequestOwnerExplanationResource resource,
       @AuthenticationPrincipal UserDetailsImpl currentUser) {

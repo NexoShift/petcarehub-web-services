@@ -4,8 +4,7 @@ import java.util.Optional;
 
 /**
  * Port to the Profiles context.
- * Implementaciones: facade/ProfilesServiceFacade (real, por defecto) y stub/ProfilesServiceStub
- * (mascotas demo, solo con AI_ACL_MODE=stub).
+ * Implementation: facade/ProfilesServiceFacade, with the real pets of Profiles.
  */
 public interface ExternalProfilesService {
 
@@ -20,4 +19,10 @@ public interface ExternalProfilesService {
    * a su clínica.
    */
   boolean isPetPatientOfVeterinarianClinic(Long petId, Long veterinarianUserId);
+
+  /** Clinic where the veterinarian works (userId -> veterinarian profile -> clinic). */
+  Optional<Long> fetchVeterinarianClinicId(Long veterinarianUserId);
+
+  /** True while the owner lets this clinic see what other clinics recorded about the pet. */
+  boolean hasActiveHistoryAccess(Long clinicId, Long petId);
 }

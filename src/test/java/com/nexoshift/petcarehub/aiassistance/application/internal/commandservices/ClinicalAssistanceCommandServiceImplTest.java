@@ -90,7 +90,7 @@ class ClinicalAssistanceCommandServiceImplTest {
 
   @Test
   void successfulGenerationCompletesWithOneDraft() {
-    when(contextBuilder.build(any(), any(), any()))
+    when(contextBuilder.build(any(), any(), any(), any()))
         .thenReturn(new ClinicalLlmContext("Perro", "motivo", List.of()));
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     when(llmService.generateSoapDraft(any())).thenReturn(completion());
@@ -100,12 +100,14 @@ class ClinicalAssistanceCommandServiceImplTest {
     assertEquals(AiAnalysisStatus.COMPLETED, assistance.getStatus());
     assertEquals(1, assistance.getDrafts().size());
     assertEquals("gpt-5.4-mini", assistance.getDrafts().getFirst().getModel());
-    verify(subscriptionsService).ensureAiUsageAllowed(VET_ID);
+    verify(subscriptionsService).reserveLlmCredit(VET_ID);
+    verify(subscriptionsService).confirmCredit(any());
+    verify(subscriptionsService, never()).releaseCredit(any());
   }
 
   @Test
   void providerFailureIsSavedAsFailedAndRethrown() {
-    when(contextBuilder.build(any(), any(), any()))
+    when(contextBuilder.build(any(), any(), any(), any()))
         .thenReturn(new ClinicalLlmContext("Perro", "motivo", List.of()));
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     when(llmService.generateSoapDraft(any()))
@@ -113,11 +115,13 @@ class ClinicalAssistanceCommandServiceImplTest {
 
     assertThrows(AiProviderUnavailableException.class, () -> service.handle(request()));
     verify(repository, atLeastOnce()).save(argThat(a -> a.getStatus() == AiAnalysisStatus.FAILED));
+    verify(subscriptionsService).releaseCredit(any());
+    verify(subscriptionsService, never()).confirmCredit(any());
   }
 
   @Test
   void emptySectionFromTheModelIsAProviderFailure() {
-    when(contextBuilder.build(any(), any(), any()))
+    when(contextBuilder.build(any(), any(), any(), any()))
         .thenReturn(new ClinicalLlmContext("Perro", "motivo", List.of()));
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     when(llmService.generateSoapDraft(any()))
@@ -129,7 +133,7 @@ class ClinicalAssistanceCommandServiceImplTest {
 
   @Test
   void invalidBackgroundFailsBeforeSavingAnything() {
-    when(contextBuilder.build(any(), any(), any()))
+    when(contextBuilder.build(any(), any(), any(), any()))
         .thenThrow(new com.nexoshift.petcarehub.shared.domain.exceptions.BadRequestException("x"));
 
     assertThrows(RuntimeException.class, () -> service.handle(request()));

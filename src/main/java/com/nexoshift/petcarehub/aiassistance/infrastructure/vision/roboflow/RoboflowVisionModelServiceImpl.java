@@ -40,12 +40,13 @@ public class RoboflowVisionModelServiceImpl implements VisionModelService {
   private final RoboflowProperties properties;
 
   public RoboflowVisionModelServiceImpl(RoboflowProperties properties) {
-    if (isBlank(properties.apiKey()) || isBlank(properties.skinModelId())) {
+    var missing = new ArrayList<String>();
+    if (isBlank(properties.apiKey())) missing.add("ROBOFLOW_API_KEY");
+    if (isBlank(properties.skinModelId())) missing.add("ROBOFLOW_SKIN_MODEL_ID");
+    if (isBlank(properties.radiographModelId())) missing.add("ROBOFLOW_RADIOGRAPH_MODEL_ID");
+    if (!missing.isEmpty()) {
       throw new IllegalStateException(
-          "Set ROBOFLOW_API_KEY and ROBOFLOW_SKIN_MODEL_ID or use ai.vision.provider=fake");
-    }
-    if (isBlank(properties.radiographModelId())) {
-      LOGGER.warn("ROBOFLOW_RADIOGRAPH_MODEL_ID is empty: radiograph analyses will answer 503");
+          "Set " + String.join(", ", missing) + ": the API does not start without Roboflow");
     }
     this.properties = properties;
     var httpClient = HttpClient.newBuilder()
@@ -65,7 +66,7 @@ public class RoboflowVisionModelServiceImpl implements VisionModelService {
       LOGGER.warn("No Roboflow model configured for {}", imageType);
       throw new AiProviderUnavailableException(PROVIDER, null);
     }
-    LOGGER.warn("Calling {}/{}", properties.baseUrl(), modelId);
+    LOGGER.debug("Calling Roboflow model {}", modelId);
       try {
       var body = restClient.post()
           // the model id has a slash (project/version), so it goes in the template as text

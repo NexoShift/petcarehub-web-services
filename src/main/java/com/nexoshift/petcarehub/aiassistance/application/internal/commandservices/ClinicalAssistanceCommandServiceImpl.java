@@ -20,7 +20,6 @@ import com.nexoshift.petcarehub.aiassistance.domain.model.commands.RequestClinic
 import com.nexoshift.petcarehub.aiassistance.domain.model.valueobjects.ClinicalLlmContext;
 import com.nexoshift.petcarehub.aiassistance.domain.model.valueobjects.DocumentReference;
 import com.nexoshift.petcarehub.aiassistance.domain.model.valueobjects.DraftDecision;
-import com.nexoshift.petcarehub.aiassistance.domain.model.valueobjects.RequesterRole;
 import com.nexoshift.petcarehub.aiassistance.domain.repositories.ClinicalAssistanceRepository;
 import com.nexoshift.petcarehub.aiassistance.domain.services.ClinicalAssistanceCommandService;
 import com.nexoshift.petcarehub.shared.domain.exceptions.BadRequestException;
@@ -28,6 +27,7 @@ import com.nexoshift.petcarehub.shared.domain.exceptions.ConflictException;
 import com.nexoshift.petcarehub.shared.domain.exceptions.ForbiddenException;
 import com.nexoshift.petcarehub.shared.domain.exceptions.NotFoundException;
 import java.time.LocalDate;
+import java.util.function.Supplier;
 import java.time.ZoneId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,15 +70,14 @@ public class ClinicalAssistanceCommandServiceImpl implements ClinicalAssistanceC
 
   @Override
   public ClinicalAssistance handle(RequestClinicalAssistanceCommand command) {
-    petAccessGuard.ensureCanAccessPet(
-        command.petId(), command.veterinarianId(), RequesterRole.VETERINARIAN);
+    var canSeeClinic = petAccessGuard.visibleClinicsForVeterinarian(
+        command.petId(), command.veterinarianId());
     ensureCurrentConsultationOfPet(command.consultationId(), command.petId());
-    subscriptionsService.ensureAiUsageAllowed(command.veterinarianId());
-    // Build the context first: if a background is invalid we fail before saving anything.
+    // Build the context first: if a background is invalid we fail before spending a credit.
     var context = contextBuilder.build(
-        command.petId(), command.currentReason(), command.backgrounds());
-    var assistance = repository.save(new ClinicalAssistance(command));
-    return generate(assistance, context);
+        command.petId(), command.currentReason(), command.backgrounds(), canSeeClinic);
+    return withLlmCredit(command.veterinarianId(),
+        () -> generate(repository.save(new ClinicalAssistance(command)), context));
   }
 
   @Override
@@ -87,10 +86,12 @@ public class ClinicalAssistanceCommandServiceImpl implements ClinicalAssistanceC
     if (!assistance.belongsTo(command.veterinarianId())) {
       throw new ForbiddenException("Only the veterinarian who requested it can regenerate");
     }
-    subscriptionsService.ensureAiUsageAllowed(command.veterinarianId());
+    // The owner's permission may have expired since the first draft: check it again.
+    var canSeeClinic = petAccessGuard.visibleClinicsForVeterinarian(
+        assistance.getPetId(), command.veterinarianId());
     var context = contextBuilder.build(assistance.getPetId(), assistance.getCurrentReason(),
-        assistance.getSelectedBackgrounds());
-    return generate(assistance, context);
+        assistance.getSelectedBackgrounds(), canSeeClinic);
+    return withLlmCredit(command.veterinarianId(), () -> generate(assistance, context));
   }
 
   /*
@@ -139,6 +140,24 @@ public class ClinicalAssistanceCommandServiceImpl implements ClinicalAssistanceC
       throw exception instanceof AiProviderUnavailableException unavailable
           ? unavailable
           : new AiProviderUnavailableException("LLM", exception);
+    }
+  }
+
+  /**
+   * Reserves one LLM credit of the clinic's plan, runs the generation, and confirms the
+   * credit when the model answered. If anything fails, the credit is released.
+   * Without an active subscription: 403. Without credits left in the period: 409.
+   */
+  private ClinicalAssistance withLlmCredit(Long veterinarianUserId,
+                                           Supplier<ClinicalAssistance> generation) {
+    var reservationId = subscriptionsService.reserveLlmCredit(veterinarianUserId);
+    try {
+      var result = generation.get();
+      subscriptionsService.confirmCredit(reservationId);
+      return result;
+    } catch (RuntimeException exception) {
+      subscriptionsService.releaseCredit(reservationId);
+      throw exception;
     }
   }
 

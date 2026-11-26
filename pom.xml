@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.nexoshift</groupId>
     <artifactId>petcare</artifactId>
-    <version>1.4.0</version>
+    <version>2.0.0</version>
     <name>petcare-hub-platform</name>
     <description>petcare-hub-platform</description>
 
@@ -81,6 +81,13 @@
             <artifactId>jjwt-jackson</artifactId>
             <version>${jjwt.version}</version>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- Sign in with Google: validates Google's ID token (signature with Google's keys,
+             issuer, audience = our Client ID, expiration). Version managed by Spring Boot. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
         </dependency>
 
         <!-- Swagger / OpenAPI (3.x es la linea para Spring Boot 4) -->

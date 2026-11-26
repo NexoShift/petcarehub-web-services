@@ -179,7 +179,8 @@ class ClinicsAndPatientsIntegrationTest {
   @DisplayName("The clinic registers a pet as patient once; the second time is 409")
   void registersPatient() throws Exception {
     var url = "/api/v1/clinics/" + clinic.clinicId() + "/patients";
-    var body = "{\"petId\": " + owner.petId() + "}";
+    var body = "{\"petId\": %d, \"petCode\": \"%s\"}"
+        .formatted(owner.petId(), api.petCode(owner.petId()));
 
     assertThat(api.send(HttpMethod.POST, url, token(clinic), body).status()).isEqualTo(201);
     assertThat(api.send(HttpMethod.POST, url, token(clinic), body).status()).isEqualTo(409);
@@ -190,10 +191,26 @@ class ClinicsAndPatientsIntegrationTest {
   void patientErrors() throws Exception {
     var url = "/api/v1/clinics/" + clinic.clinicId() + "/patients";
 
-    assertThat(api.send(HttpMethod.POST, url, token(otherClinic),
-        "{\"petId\": " + owner.petId() + "}").status()).isEqualTo(403);
-    assertThat(api.send(HttpMethod.POST, url, token(clinic), "{\"petId\": 999999}").status())
-        .isEqualTo(404);
+    var body = "{\"petId\": %d, \"petCode\": \"%s\"}"
+        .formatted(owner.petId(), api.petCode(owner.petId()));
+
+    assertThat(api.send(HttpMethod.POST, url, token(otherClinic), body).status()).isEqualTo(403);
+    assertThat(api.send(HttpMethod.POST, url, token(clinic),
+        "{\"petId\": 999999, \"petCode\": \"PET-AAAAAAAA\"}").status()).isEqualTo(404);
+  }
+
+  @Test
+  @DisplayName("Without the pet code shared by the owner the clinic cannot register the pet")
+  void patientNeedsOwnerConsent() throws Exception {
+    var url = "/api/v1/clinics/" + clinic.clinicId() + "/patients";
+
+    var wrongCode = api.send(HttpMethod.POST, url, token(clinic),
+        "{\"petId\": " + owner.petId() + ", \"petCode\": \"PET-AAAAAAAA\"}");
+    var noCode = api.send(HttpMethod.POST, url, token(clinic),
+        "{\"petId\": " + owner.petId() + "}");
+
+    assertThat(wrongCode.status()).as(wrongCode.body()).isEqualTo(403);
+    assertThat(noCode.status()).as(noCode.body()).isEqualTo(400);
   }
 
   @Test

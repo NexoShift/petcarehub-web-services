@@ -56,8 +56,10 @@ public class MedicalHistoryController {
   public ResponseEntity<MedicalHistoryResource> recordAllergy(
       @PathVariable Long petId, @Valid @RequestBody RecordAllergyResource resource,
       @AuthenticationPrincipal UserDetailsImpl currentUser) {
-    var history = commandService.handle(new RecordAllergyCommand(petId, currentUser.getId(),
+    commandService.handle(new RecordAllergyCommand(petId, currentUser.getId(),
         resource.allergen(), resource.reaction(), resource.severity(), resource.notes()));
+    // The answer shows only what this user may see (the same as GET).
+    var history = queryService.handle(new GetMedicalHistoryByPetIdQuery(petId, currentUser.getId()));
     return new ResponseEntity<>(
         MedicalHistoryResourceFromEntityAssembler.toResourceFromEntity(history), HttpStatus.CREATED);
   }
@@ -68,9 +70,10 @@ public class MedicalHistoryController {
   public ResponseEntity<MedicalHistoryResource> recordVaccination(
       @PathVariable Long petId, @Valid @RequestBody RecordVaccinationResource resource,
       @AuthenticationPrincipal UserDetailsImpl currentUser) {
-    var history = commandService.handle(new RecordVaccinationCommand(petId, currentUser.getId(),
+    commandService.handle(new RecordVaccinationCommand(petId, currentUser.getId(),
         resource.vaccineName(), resource.doseNumber(), resource.appliedOn(),
         resource.nextDoseOn(), resource.batchNumber(), resource.notes()));
+    var history = queryService.handle(new GetMedicalHistoryByPetIdQuery(petId, currentUser.getId()));
     return new ResponseEntity<>(
         MedicalHistoryResourceFromEntityAssembler.toResourceFromEntity(history), HttpStatus.CREATED);
   }

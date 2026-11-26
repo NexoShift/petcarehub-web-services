@@ -26,6 +26,8 @@ import org.mockito.Mockito;
 /** Uses the demo stubs: Rocky is pet 1 (consultations 1-3), Luna is pet 2 (consultation 5). */
 class ClinicalLlmContextBuilderTest {
 
+  private static final java.util.function.Predicate<Long> ALL_CLINICS = clinicId -> true;
+
   private final VisionAnalysisRepository visionRepository = Mockito.mock(VisionAnalysisRepository.class);
   private final ClinicalLlmContextBuilder builder = new ClinicalLlmContextBuilder(
       new ProfilesServiceStub(), new ClinicalAttentionServiceStub(), visionRepository);
@@ -49,7 +51,8 @@ class ClinicalLlmContextBuilderTest {
 
   @Test
   void onlySelectedBackgroundsReachTheContext() {
-    var context = builder.build(1L, "Rascado en orejas", List.of(consultation(1), consultation(2)));
+    var context = builder.build(1L, "Rascado en orejas", List.of(consultation(1), consultation(2)),
+        ALL_CLINICS);
     assertEquals(2, context.backgrounds().size());
     assertTrue(context.backgrounds().get(0).contains("Dermatitis atópica"));
     assertTrue(context.backgrounds().get(1).contains("Malassezia"));
@@ -58,7 +61,7 @@ class ClinicalLlmContextBuilderTest {
 
   @Test
   void petNameIsNotSentToTheModel() {
-    var context = builder.build(1L, "Rascado", List.of());
+    var context = builder.build(1L, "Rascado", List.of(), ALL_CLINICS);
     assertFalse(context.patientSummary().contains("Rocky"));
     assertTrue(context.patientSummary().contains("Bulldog francés"));
   }
@@ -66,18 +69,25 @@ class ClinicalLlmContextBuilderTest {
   @Test
   void backgroundOfAnotherPetIsRejected() {
     assertThrows(BadRequestException.class,
-        () -> builder.build(1L, "Rascado", List.of(consultation(5))));
+        () -> builder.build(1L, "Rascado", List.of(consultation(5)), ALL_CLINICS));
+  }
+
+  @Test
+  void consultationOfAnotherClinicNeedsTheOwnersPermission() {
+    // The stub consultations are from clinic 1; this vet only sees clinic 7.
+    assertThrows(BadRequestException.class,
+        () -> builder.build(1L, "Rascado", List.of(consultation(1)), clinicId -> clinicId == 7L));
   }
 
   @Test
   void unknownConsultationIsRejected() {
     assertThrows(BadRequestException.class,
-        () -> builder.build(1L, "Rascado", List.of(consultation(99))));
+        () -> builder.build(1L, "Rascado", List.of(consultation(99)), ALL_CLINICS));
   }
 
   @Test
   void unknownPetIsNotFound() {
-    assertThrows(NotFoundException.class, () -> builder.build(42L, "Rascado", List.of()));
+    assertThrows(NotFoundException.class, () -> builder.build(42L, "Rascado", List.of(), ALL_CLINICS));
   }
 
   @Test
@@ -85,7 +95,7 @@ class ClinicalLlmContextBuilderTest {
     Mockito.when(visionRepository.findById(9L)).thenReturn(Optional.of(radiographOf(1L, true)));
     var vision = new SelectedBackground(BackgroundType.VISION_ANALYSIS, 9L);
 
-    var context = builder.build(1L, "Tos", List.of(vision));
+    var context = builder.build(1L, "Tos", List.of(vision), ALL_CLINICS);
 
     var text = context.backgrounds().getFirst();
     assertTrue(text.startsWith("Análisis de radiografía del"));
@@ -97,13 +107,13 @@ class ClinicalLlmContextBuilderTest {
   void visionAnalysisOfAnotherPetIsRejected() {
     Mockito.when(visionRepository.findById(9L)).thenReturn(Optional.of(radiographOf(2L, true)));
     var vision = new SelectedBackground(BackgroundType.VISION_ANALYSIS, 9L);
-    assertThrows(BadRequestException.class, () -> builder.build(1L, "Tos", List.of(vision)));
+    assertThrows(BadRequestException.class, () -> builder.build(1L, "Tos", List.of(vision), ALL_CLINICS));
   }
 
   @Test
   void unfinishedVisionAnalysisIsRejected() {
     Mockito.when(visionRepository.findById(9L)).thenReturn(Optional.of(radiographOf(1L, false)));
     var vision = new SelectedBackground(BackgroundType.VISION_ANALYSIS, 9L);
-    assertThrows(BadRequestException.class, () -> builder.build(1L, "Tos", List.of(vision)));
+    assertThrows(BadRequestException.class, () -> builder.build(1L, "Tos", List.of(vision), ALL_CLINICS));
   }
 }

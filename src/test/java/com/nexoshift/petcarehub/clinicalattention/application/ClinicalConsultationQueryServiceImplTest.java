@@ -130,14 +130,28 @@ class ClinicalConsultationQueryServiceImplTest {
   }
 
   @Test
-  @DisplayName("When the pet becomes a patient of another clinic, its veterinarians see the history")
-  void newClinicSeesHistory() {
+  @DisplayName("Another clinic where the pet is a patient does NOT see this clinic's consultation without the owner's permission")
+  void newClinicNeedsOwnersPermission() {
     profiles.withPatient(PET_ID, OTHER_CLINIC_ID);
+
+    assertThatThrownBy(() -> service.handle(
+        new GetAuthorizedClinicalConsultationByIdQuery(firstId, OTHER_CLINIC_USER_ID)))
+        .isInstanceOf(ForbiddenException.class);
+    assertThat(service.handle(new GetClinicalConsultationsByPetIdQuery(PET_ID, OTHER_CLINIC_USER_ID)))
+        .isEmpty();
+  }
+
+  @Test
+  @DisplayName("With the owner's permission by hours, the other clinic sees the whole history")
+  void newClinicSeesHistoryWithPermission() {
+    profiles.withPatient(PET_ID, OTHER_CLINIC_ID).withHistoryAccess(PET_ID, OTHER_CLINIC_ID);
 
     var result = service.handle(
         new GetAuthorizedClinicalConsultationByIdQuery(firstId, OTHER_CLINIC_USER_ID));
 
     assertThat(result).isPresent();
+    assertThat(service.handle(new GetClinicalConsultationsByPetIdQuery(PET_ID, OTHER_CLINIC_USER_ID)))
+        .hasSize(2);
   }
 
   @Test

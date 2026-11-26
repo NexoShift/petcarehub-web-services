@@ -10,6 +10,7 @@ import com.nexoshift.petcarehub.aiassistance.application.internal.outboundservic
 import com.nexoshift.petcarehub.shared.domain.exceptions.BadRequestException;
 import com.nexoshift.petcarehub.shared.domain.exceptions.NotFoundException;
 import java.util.List;
+import java.util.function.Predicate;
 import org.springframework.stereotype.Component;
 
 /**
@@ -32,21 +33,27 @@ public class ClinicalLlmContextBuilder {
     this.visionAnalysisRepository = visionAnalysisRepository;
   }
 
+  /**
+   * @param canSeeClinic the clinics whose consultations the veterinarian may use (their own,
+   *                     and the others only with the owner's permission)
+   */
   public ClinicalLlmContext build(Long petId, String currentReason,
-      List<SelectedBackground> selectedBackgrounds) {
+      List<SelectedBackground> selectedBackgrounds, Predicate<Long> canSeeClinic) {
     var pet = profilesService.fetchPetSummary(petId)
         .orElseThrow(() -> new NotFoundException("Pet " + petId + " was not found"));
     var backgrounds = selectedBackgrounds.stream()
-        .map(background -> describe(petId, background))
+        .map(background -> describe(petId, background, canSeeClinic))
         .toList();
     return new ClinicalLlmContext(pet.toPromptText(), currentReason, backgrounds);
   }
 
-  private String describe(Long petId, SelectedBackground background) {
+  private String describe(Long petId, SelectedBackground background,
+      Predicate<Long> canSeeClinic) {
     return switch (background.type()) {
       case PREVIOUS_CONSULTATION -> clinicalAttentionService
           .fetchConsultation(background.referenceId())
           .filter(consultation -> consultation.petId().equals(petId))
+          .filter(consultation -> canSeeClinic.test(consultation.clinicId()))
           .map(ConsultationBackground::toPromptText)
           .orElseThrow(() -> new BadRequestException(
               "Consultation " + background.referenceId() + " is not a background of this pet"));
