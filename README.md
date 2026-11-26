@@ -81,19 +81,19 @@ Required environment variables (especially for the `prod` profile):
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`   | Amazon S3 credentials                         | —                                                |
 | `AWS_S3_BUCKET`, `AWS_REGION`                  | Amazon S3 bucket and region                   | `petcarehub-storage`, `us-east-2`                |
 | `FILE_STORAGE_LOCAL_DIRECTORY`                 | Folder for exam files stored locally          | `uploads`                                        |
-| `AI_VISION_PROVIDER`                           | Computer vision provider: `fake` or `roboflow`| `fake`                                           |
-| `ROBOFLOW_API_KEY`                             | Roboflow API key                              | —                                                |
-| `ROBOFLOW_SKIN_MODEL_ID`, `ROBOFLOW_RADIOGRAPH_MODEL_ID` | Roboflow model identifiers          | —                                                |
+| `ROBOFLOW_API_KEY`                             | Roboflow API key (**required**)               | —                                                |
+| `ROBOFLOW_SKIN_MODEL_ID`, `ROBOFLOW_RADIOGRAPH_MODEL_ID` | Roboflow model identifiers (**required**) | —                                      |
 | `AI_STORAGE_PROVIDER`                          | Storage for AI images: `local` or `s3`        | `local` (`s3` in prod)                           |
 | `CLINICAL_EXAMS_STORAGE_PROVIDER`              | Storage for exam files: `local` or `s3`       | `local` (`s3` in prod)                           |
 | `STRIPE_SECRET_KEY` | Stripe secret key, `sk_test_...` or `sk_live_...` (required: the API does not start without it) | — |
 | `STRIPE_PRICE_PET_OWNER_BASIC`, `STRIPE_PRICE_PET_OWNER_PREMIUM`, `STRIPE_PRICE_CLINIC_BASIC`, `STRIPE_PRICE_CLINIC_PREMIUM` | Stripe price ids of the plans, `price_...` (required) | — |
 | `STRIPE_WEBHOOK_SECRET` | Signing secret of the Stripe webhook, `whsec_...` (required) | — |
 | `STRIPE_CHECKOUT_SUCCESS_URL`, `STRIPE_CHECKOUT_CANCEL_URL` | Pages Stripe returns to after the checkout | `http://localhost:4200/subscription?checkout=...` |
-| `SUBSCRIPTIONS_SIMULATED_PAYMENTS_ENABLED` | Enables the simulated payment endpoint (never with real users) | `true` (`false` in prod) |
-| `AI_LLM_PROVIDER` | LLM provider: `fake` or `openai` | `fake` |
-| `OPENAI_API_KEY` | OpenAI API key (only with `openai`) | — |
+| `SUBSCRIPTIONS_SIMULATED_PAYMENTS_ENABLED` | Enables the simulated payment endpoint, only on purpose to seed data (never with real users) | `false` |
+| `OPENAI_API_KEY` | OpenAI API key (**required**) | — |
 | `OPENAI_MODEL` | OpenAI model | `gpt-5.4-mini` |
+| `SWAGGER_ENABLED` | Swagger UI and OpenAPI document in `prod` | `true` |
+| `GOOGLE_CLIENT_ID` | OAuth client ids allowed for Sign in with Google (comma-separated: web, Android, iOS). **Required** | — |
 
 > Never commit real secrets. Use environment variables or your IDE run configuration.
 
@@ -182,6 +182,7 @@ All endpoints live under `/api/v1` and, except authentication, require `Authoriz
 ### IAM (Identity and Access Management)
 - `POST /api/v1/authentication/sign-up`: Register a pet owner or clinic account.
 - `POST /api/v1/authentication/sign-in`: Authenticate and obtain a JWT token.
+- `POST /api/v1/authentication/google-sign-in`: Sign in or sign up with a Google ID token.
 - `POST /api/v1/authentication/password-recovery` · `POST /api/v1/authentication/password-reset`: Password recovery by e-mail.
 - `GET /api/v1/users/me`: Authenticated user.
 - `/api/v1/users/{userId}`: Password change, activation, and deactivation.
@@ -193,7 +194,8 @@ All endpoints live under `/api/v1` and, except authentication, require `Authoriz
 - `/api/v1/pet-owners/{petOwnerId}/pets` · `/api/v1/pets`: Pets (search by `petCode`).
 - `/api/v1/pets/{petId}/clinics`: Clinics where a pet is a patient.
 - `/api/v1/clinics`: Clinic profiles.
-- `/api/v1/clinics/{clinicId}/patients`: Clinic patients.
+- `/api/v1/clinics/{clinicId}/patients`: Clinic patients (registration requires the `petCode` shared by the owner).
+- `/api/v1/pets/{petId}/history-access-grants`: Temporary access (1 to 72 hours) of a clinic to the history recorded by other clinics.
 - `/api/v1/clinics/{clinicId}/veterinarians` · `/api/v1/veterinarians`: Veterinarians.
 - `/api/v1/clinics/{clinicId}/consulting-rooms`: Consulting rooms (activate, deactivate).
 - `/api/v1/clinics/{clinicId}/consulting-room-assignments`: Assignment of veterinarians to consulting rooms.
@@ -238,9 +240,10 @@ All endpoints live under `/api/v1` and, except authentication, require `Authoriz
 - **Bounded Context Integration:** Contexts communicate only through ACL facades (`ContextFacade`) and outbound services, never through another context's repositories.
 - **Domain Events:** Aggregates extend `AuditableAbstractAggregateRoot` and register events (`AccountRegistered`, `ClinicalConsultationCompleted`, `ExamResultValidated`) that are handled by application event handlers. Clinical Attention and Clinical Exams also publish integration events, from which Medical History builds the timeline of each pet.
 - **Immutable Clinical Records:** Completed or cancelled consultations cannot be modified; corrections are added as re-evaluations.
-- **Access Rules:** A veterinarian only works with patients of their own clinic; a pet owner only sees their own pets and **validated** exam results.
+- **Access Rules:** A veterinarian only works with patients of their own clinic; a pet owner only sees their own pets and **validated** exam results. A clinic sees the records made by other clinics only while the owner grants it temporary access; allergies are always visible.
+- **Subscription Enforcement:** Pets, veterinarians and AI require an active subscription; plan limits answer `409`.
 - **Centralized Error Handling:** A global `@RestControllerAdvice` maps domain exceptions to `400`, `401`, `403`, `404`, `409`, `413`, and `422` with a common `ErrorResource` (status, error, message, path, timestamp, details).
-- **Pluggable Adapters:** File storage (`local` / `s3`), computer vision (`fake` / `roboflow`) and LLM (`fake` / `openai`) are selected by configuration.
+- **Real Services Only:** Outside the automated tests the API uses Stripe, Google, OpenAI and Roboflow, and it does not start if one of their settings is missing. File storage (`local` / `s3`) is selected by configuration.
 
 ---
 
@@ -265,6 +268,10 @@ The main decisions are recorded as ADRs in [docs/adrs.md](docs/adrs.md):
 | [013](docs/adrs.md#adr-013-git-flow-conventional-commits-and-semantic-versioning) | Git Flow, Conventional Commits and SemVer |
 | [014](docs/adrs.md#adr-014-medical-history-built-from-integration-events) | Medical history built from integration events |
 | [015](docs/adrs.md#adr-015-pluggable-llm-provider-with-a-fake-for-development) | Pluggable LLM provider (fake / OpenAI) |
+| [016](docs/adrs.md#adr-016-active-subscription-required-and-ai-credits-with-reservations) | Active subscription and AI credits with reservations |
+| [017](docs/adrs.md#adr-017-owner-consent-for-patients-and-temporary-history-access) | Owner consent and temporary history access |
+| [018](docs/adrs.md#adr-018-sign-in-with-google-verifying-the-id-token-in-the-backend) | Sign in with Google (ID token) |
+| [019](docs/adrs.md#adr-019-only-real-services-outside-the-tests-and-required-settings-at-startup) | Real services only; fail fast on missing settings |
 
 ---
 
