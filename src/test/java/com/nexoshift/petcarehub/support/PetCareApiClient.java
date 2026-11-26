@@ -117,11 +117,41 @@ public final class PetCareApiClient {
         signIn.number("accountId"));
   }
 
+  // ---------------------------------------------------------------- Subscriptions
+
+  /** Planes con margen para los tests: 10 vets por clínica y 6 mascotas por dueño. */
+  public static final String CLINIC_PLAN = "CLINIC_PREMIUM";
+  public static final String OWNER_PLAN = "PET_OWNER_PREMIUM";
+
+  /** Id del plan por su código (PET_OWNER_BASIC, CLINIC_PREMIUM, ...), leído de GET /plans. */
+  public long planId(String planCode) throws Exception {
+    var plans = send(HttpMethod.GET, "/api/v1/plans", null, null);
+    assertThat(plans.status()).as("plans " + plans.body()).isEqualTo(200);
+    return Long.parseLong(extract(plans.body(), "\"id\":(\\d+),\"code\":\"" + planCode + "\""));
+  }
+
+  /**
+   * Sin suscripción activa no se registran mascotas ni vets, ni se usa la IA.
+   * Igual que el frontend: crea la suscripción (PENDING) y luego "paga" con el pago
+   * simulado (subscriptions.simulated-payments.enabled=true en el perfil test).
+   */
+  public void activateSubscription(Session session, String planCode) throws Exception {
+    var subscription = send(HttpMethod.POST,
+        "/api/v1/accounts/" + session.accountId() + "/subscriptions", session.token(),
+        "{\"planId\": " + planId(planCode) + "}");
+    assertThat(subscription.status()).as("subscription " + subscription.body()).isEqualTo(201);
+    var payment = send(HttpMethod.POST,
+        "/api/v1/accounts/" + session.accountId() + "/subscription/simulated-payments",
+        session.token(), null);
+    assertThat(payment.status()).as("simulated payment " + payment.body()).isEqualTo(200);
+  }
+
   // ---------------------------------------------------------------- Profiles
 
-  /** Cuenta CLINIC + perfil de clínica + perfil vet del titular + consultorio activo. */
+  /** Cuenta CLINIC con suscripción activa + perfil de clínica + perfil vet del titular + consultorio activo. */
   public ClinicSetup clinicWithVeterinarian() throws Exception {
     var holder = signUpAndSignIn("CLINIC");
+    activateSubscription(holder, CLINIC_PLAN);
     var clinic = sendForm("/api/v1/clinics", holder.token(), Map.of(
         "accountId", holder.accountId(),
         "name", "Clínica " + holder.userId(),
@@ -174,9 +204,10 @@ public final class PetCareApiClient {
     return new MemberSetup(session, vet.number("id"));
   }
 
-  /** Cuenta PET_OWNER + perfil de dueño + una mascota. */
+  /** Cuenta PET_OWNER con suscripción activa + perfil de dueño + una mascota. */
   public OwnerSetup ownerWithPet() throws Exception {
     var owner = signUpAndSignIn("PET_OWNER");
+    activateSubscription(owner, OWNER_PLAN);
     var petOwner = sendForm("/api/v1/pet-owners", owner.token(), Map.of(
         "userId", owner.userId(),
         "firstName", "Ares",

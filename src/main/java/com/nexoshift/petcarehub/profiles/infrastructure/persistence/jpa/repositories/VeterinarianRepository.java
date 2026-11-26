@@ -20,4 +20,12 @@ public interface VeterinarianRepository extends JpaRepository<Veterinarian, Long
     List<Veterinarian> findByClinicId(ClinicId clinicId);
 
     boolean existsByUserId(UserId userId);
+
+    /**
+     * Counts the veterinarians registered in a clinic.
+     *
+     * @param clinicId the clinic identifier
+     * @return the number of veterinarians
+     */
+    long countByClinicId(ClinicId clinicId);
 }
