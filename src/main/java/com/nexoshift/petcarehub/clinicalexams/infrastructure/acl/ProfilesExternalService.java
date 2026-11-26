@@ -37,6 +37,11 @@ public class ProfilesExternalService implements ExternalProfilesService {
         return profileContextFacade.isPetPatientOfClinic(clinicId, petId);
     }
 
+    @Override
+    public boolean hasActiveHistoryAccess(Long clinicId, Long petId) {
+        return profileContextFacade.hasActiveHistoryAccess(clinicId, petId);
+    }
+
     private static Optional<Long> positive(Long value) {
         return value != null && value > 0 ? Optional.of(value) : Optional.empty();
     }
