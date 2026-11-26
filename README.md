@@ -90,6 +90,10 @@ Required environment variables (especially for the `prod` profile):
 | `STRIPE_PRICE_PET_OWNER_BASIC`, `STRIPE_PRICE_PET_OWNER_PREMIUM`, `STRIPE_PRICE_CLINIC_BASIC`, `STRIPE_PRICE_CLINIC_PREMIUM` | Stripe price ids of the plans, `price_...` (required) | — |
 | `STRIPE_WEBHOOK_SECRET` | Signing secret of the Stripe webhook, `whsec_...` (required) | — |
 | `STRIPE_CHECKOUT_SUCCESS_URL`, `STRIPE_CHECKOUT_CANCEL_URL` | Pages Stripe returns to after the checkout | `http://localhost:4200/subscription?checkout=...` |
+| `SUBSCRIPTIONS_SIMULATED_PAYMENTS_ENABLED` | Enables the simulated payment endpoint (never with real users) | `true` (`false` in prod) |
+| `AI_LLM_PROVIDER` | LLM provider: `fake` or `openai` | `fake` |
+| `OPENAI_API_KEY` | OpenAI API key (only with `openai`) | — |
+| `OPENAI_MODEL` | OpenAI model | `gpt-5.4-mini` |
 
 > Never commit real secrets. Use environment variables or your IDE run configuration.
 
@@ -217,9 +221,13 @@ All endpoints live under `/api/v1` and, except authentication, require `Authoriz
 - `PATCH /api/v1/accounts/{accountId}/subscription`: Scheduled cancellation and reactivation.
 - `/api/v1/accounts/{accountId}/subscription/payments` · `/entitlements` · `/ai-credits`: Payments, plan limits and AI credits.
 - `POST /api/v1/subscriptions/webhooks/stripe` (public): Stripe webhook.
+- `POST /api/v1/accounts/{accountId}/subscription/simulated-payments`: Activates the subscription without Stripe (development and demos only).
 
 ### AI Assistance
 - `/api/v1/ai/vision-analyses`: Computer vision analysis of skin photos and X-rays (by `petId` or `consultationId`).
+- `GET /api/v1/ai/clinical-backgrounds?petId=`: Clinical backgrounds used by the assistant.
+- `/api/v1/ai/clinical-assistances`: SOAP draft for the veterinarian, regenerations, decision on a draft and PDF report.
+- `/api/v1/ai/owner-explanations`: Plain-language answers for the pet owner.
 
 ---
 
@@ -232,7 +240,7 @@ All endpoints live under `/api/v1` and, except authentication, require `Authoriz
 - **Immutable Clinical Records:** Completed or cancelled consultations cannot be modified; corrections are added as re-evaluations.
 - **Access Rules:** A veterinarian only works with patients of their own clinic; a pet owner only sees their own pets and **validated** exam results.
 - **Centralized Error Handling:** A global `@RestControllerAdvice` maps domain exceptions to `400`, `401`, `403`, `404`, `409`, `413`, and `422` with a common `ErrorResource` (status, error, message, path, timestamp, details).
-- **Pluggable Adapters:** File storage (`local` / `s3`) and computer vision (`fake` / `roboflow`) are selected by configuration.
+- **Pluggable Adapters:** File storage (`local` / `s3`), computer vision (`fake` / `roboflow`) and LLM (`fake` / `openai`) are selected by configuration.
 
 ---
 
@@ -256,6 +264,7 @@ The main decisions are recorded as ADRs in [docs/adrs.md](docs/adrs.md):
 | [012](docs/adrs.md#adr-012-docker-and-azure-container-apps-with-github-actions) | Docker, Azure Container Apps and GitHub Actions |
 | [013](docs/adrs.md#adr-013-git-flow-conventional-commits-and-semantic-versioning) | Git Flow, Conventional Commits and SemVer |
 | [014](docs/adrs.md#adr-014-medical-history-built-from-integration-events) | Medical history built from integration events |
+| [015](docs/adrs.md#adr-015-pluggable-llm-provider-with-a-fake-for-development) | Pluggable LLM provider (fake / OpenAI) |
 
 ---
 

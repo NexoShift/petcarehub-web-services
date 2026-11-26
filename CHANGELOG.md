@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-25
+
+### Added
+- **AI Assistance**
+    - LLM clinical assistant: SOAP draft for the veterinarian with the pet's backgrounds, regenerations, decision (accept, edit, reject) and PDF report of the confirmed draft.
+    - Plain-language explanations for the pet owner about a consultation.
+    - `fake` and `openai` LLM providers (`AI_LLM_PROVIDER`).
+- **Clinical Attention**
+    - Consultation summaries for other contexts (backgrounds of the AI assistant).
+- **Subscriptions**
+    - Simulated payments for development and demos (`SUBSCRIPTIONS_SIMULATED_PAYMENTS_ENABLED`).
+
+### Changed
+- OpenPDF is used again for the AI clinical report.
+- Test suite with 450 tests on an in-memory H2 database.
+
 ## [1.3.0] - 2026-11-25
 
 ### Added
@@ -113,7 +129,8 @@ First stable release, delivered at the end of **Sprint 1**.
 - Access rules between contexts: a veterinarian only works with patients of their clinic, and an owner only sees their own pets.
 - Owners only see exam results after a veterinarian validates them.
 
-[Unreleased]: https://github.com/NexoShift/petcarehub-web-services/compare/v1.3.0...develop
+[Unreleased]: https://github.com/NexoShift/petcarehub-web-services/compare/v1.4.0...develop
+[1.4.0]: https://github.com/NexoShift/petcarehub-web-services/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/NexoShift/petcarehub-web-services/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/NexoShift/petcarehub-web-services/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/NexoShift/petcarehub-web-services/compare/v1.0.2...v1.1.0

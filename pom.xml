@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.nexoshift</groupId>
     <artifactId>petcare</artifactId>
-    <version>1.3.0</version>
+    <version>1.4.0</version>
     <name>petcare-hub-platform</name>
     <description>petcare-hub-platform</description>
 
@@ -105,6 +105,13 @@
             <groupId>com.stripe</groupId>
             <artifactId>stripe-java</artifactId>
             <version>34.2.0</version>
+        </dependency>
+
+        <!-- PDF of the confirmed AI clinical report -->
+        <dependency>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>2.0.3</version>
         </dependency>
 
         <!-- Tests -->
