@@ -5,6 +5,7 @@ import com.nexoshift.petcarehub.clinicalattention.domain.model.queries.GetAuthor
 import com.nexoshift.petcarehub.clinicalattention.domain.model.queries.GetClinicalConsultationByIdQuery;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.queries.GetClinicalConsultationsByPetIdQuery;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.queries.GetClinicalConsultationsByVeterinarianIdQuery;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.queries.GetCompletedClinicalConsultationsByPetIdQuery;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,4 +20,6 @@ public interface ClinicalConsultationQueryService {
   List<ClinicalConsultation> handle(GetClinicalConsultationsByPetIdQuery query);
 
   List<ClinicalConsultation> handle(GetClinicalConsultationsByVeterinarianIdQuery query);
+
+  List<ClinicalConsultation> handle(GetCompletedClinicalConsultationsByPetIdQuery query);
 }

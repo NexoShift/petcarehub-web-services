@@ -7,7 +7,9 @@ import com.nexoshift.petcarehub.clinicalattention.domain.model.queries.GetAuthor
 import com.nexoshift.petcarehub.clinicalattention.domain.model.queries.GetClinicalConsultationByIdQuery;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.queries.GetClinicalConsultationsByPetIdQuery;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.queries.GetClinicalConsultationsByVeterinarianIdQuery;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.queries.GetCompletedClinicalConsultationsByPetIdQuery;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.valueobjects.ClinicId;
+import com.nexoshift.petcarehub.clinicalattention.domain.model.valueobjects.ConsultationStatus;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.valueobjects.PetId;
 import com.nexoshift.petcarehub.clinicalattention.domain.model.valueobjects.VeterinarianId;
 import com.nexoshift.petcarehub.clinicalattention.domain.repositories.ClinicalConsultationRepository;
@@ -46,6 +48,14 @@ public class ClinicalConsultationQueryServiceImpl implements ClinicalConsultatio
   @Transactional(readOnly = true)
   public Optional<ClinicalConsultation> handle(GetClinicalConsultationByIdQuery query) {
     return consultationRepository.findById(query.consultationId());
+  }
+
+  @Override
+  public List<ClinicalConsultation> handle(GetCompletedClinicalConsultationsByPetIdQuery query) {
+    return consultationRepository.findAllByPetIdOrderByCreatedAtDesc(new PetId(query.petId()))
+            .stream()
+            .filter(consultation -> consultation.getStatus() == ConsultationStatus.COMPLETED)
+            .toList();
   }
 
   @Override
