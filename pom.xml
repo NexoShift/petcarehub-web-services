@@ -83,6 +83,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Sign in with Google: validates Google's ID token (signature with Google's keys,
+             issuer, audience = our Client ID, expiration). Version managed by Spring Boot. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
+
         <!-- Swagger / OpenAPI (3.x es la linea para Spring Boot 4) -->
         <dependency>
             <groupId>org.springdoc</groupId>

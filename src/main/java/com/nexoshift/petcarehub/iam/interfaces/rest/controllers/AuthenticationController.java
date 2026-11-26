@@ -4,6 +4,7 @@ import com.nexoshift.petcarehub.iam.domain.model.commands.RequestPasswordRecover
 import com.nexoshift.petcarehub.iam.domain.services.AccountCommandService;
 import com.nexoshift.petcarehub.iam.domain.services.PasswordCommandService;
 import com.nexoshift.petcarehub.iam.interfaces.rest.resources.AuthenticatedUserResource;
+import com.nexoshift.petcarehub.iam.interfaces.rest.resources.GoogleSignInResource;
 import com.nexoshift.petcarehub.iam.interfaces.rest.resources.PasswordRecoveryResource;
 import com.nexoshift.petcarehub.iam.interfaces.rest.resources.PasswordResetResource;
 import com.nexoshift.petcarehub.iam.interfaces.rest.resources.SignInResource;
@@ -12,6 +13,7 @@ import com.nexoshift.petcarehub.iam.interfaces.rest.resources.UserResource;
 import com.nexoshift.petcarehub.iam.interfaces.rest.transform.AuthenticatedUserResourceFromEntityAssembler;
 import com.nexoshift.petcarehub.iam.interfaces.rest.transform.ResetPasswordCommandFromResourceAssembler;
 import com.nexoshift.petcarehub.iam.interfaces.rest.transform.SignInCommandFromResourceAssembler;
+import com.nexoshift.petcarehub.iam.interfaces.rest.transform.SignInWithGoogleCommandFromResourceAssembler;
 import com.nexoshift.petcarehub.iam.interfaces.rest.transform.SignUpCommandFromResourceAssembler;
 import com.nexoshift.petcarehub.iam.interfaces.rest.transform.UserResourceFromEntityAssembler;
 import com.nexoshift.petcarehub.shared.interfaces.rest.resources.MessageResource;
@@ -61,6 +63,20 @@ public class AuthenticationController {
         .map(session -> ResponseEntity.ok(
             AuthenticatedUserResourceFromEntityAssembler.toResourceFromEntity(session)))
         .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+  }
+
+  /**
+   * Sign in with Google. 200 if the account existed, 201 if it was created now.
+   * 422 ACCOUNT_TYPE_REQUIRED the first time without accountType: ask the user and resend.
+   */
+  @PostMapping("/google-sign-in")
+  @Operation(summary = "Sign in with a Google ID token and get a JWT")
+  public ResponseEntity<AuthenticatedUserResource> signInWithGoogle(
+      @Valid @RequestBody GoogleSignInResource resource) {
+    var result = accountCommandService.handle(
+        SignInWithGoogleCommandFromResourceAssembler.toCommandFromResource(resource));
+    return ResponseEntity.status(result.accountCreated() ? HttpStatus.CREATED : HttpStatus.OK)
+        .body(AuthenticatedUserResourceFromEntityAssembler.toResourceFromEntity(result.session()));
   }
 
   @PostMapping("/password-recovery")

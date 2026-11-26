@@ -1,12 +1,15 @@
 package com.nexoshift.petcarehub.iam.application.internal.commandservices;
 
 import com.nexoshift.petcarehub.iam.application.internal.outboundservices.hashing.HashingService;
+import com.nexoshift.petcarehub.iam.application.internal.outboundservices.identity.ExternalIdentityVerifier;
 import com.nexoshift.petcarehub.iam.application.internal.outboundservices.tokens.TokenService;
 import com.nexoshift.petcarehub.iam.domain.exceptions.AccountNotFoundException;
 import com.nexoshift.petcarehub.iam.domain.exceptions.AccountOperationNotAllowedException;
+import com.nexoshift.petcarehub.iam.domain.exceptions.AccountTypeRequiredException;
 import com.nexoshift.petcarehub.iam.domain.exceptions.EmailAlreadyRegisteredException;
 import com.nexoshift.petcarehub.iam.domain.exceptions.InactiveUserException;
 import com.nexoshift.petcarehub.iam.domain.exceptions.InvalidCredentialsException;
+import com.nexoshift.petcarehub.iam.domain.exceptions.InvalidGoogleTokenException;
 import com.nexoshift.petcarehub.iam.domain.exceptions.RoleNotFoundException;
 import com.nexoshift.petcarehub.iam.domain.exceptions.UserNotFoundException;
 import com.nexoshift.petcarehub.iam.domain.model.aggregates.Account;
@@ -14,11 +17,13 @@ import com.nexoshift.petcarehub.iam.domain.model.commands.ActivateUserCommand;
 import com.nexoshift.petcarehub.iam.domain.model.commands.CreateMemberUserCommand;
 import com.nexoshift.petcarehub.iam.domain.model.commands.DeactivateUserCommand;
 import com.nexoshift.petcarehub.iam.domain.model.commands.SignInCommand;
+import com.nexoshift.petcarehub.iam.domain.model.commands.SignInWithGoogleCommand;
 import com.nexoshift.petcarehub.iam.domain.model.commands.SignUpCommand;
 import com.nexoshift.petcarehub.iam.domain.model.entities.Role;
 import com.nexoshift.petcarehub.iam.domain.model.entities.User;
 import com.nexoshift.petcarehub.iam.domain.model.valueobjects.AuthenticatedSession;
 import com.nexoshift.petcarehub.iam.domain.model.valueobjects.EmailAddress;
+import com.nexoshift.petcarehub.iam.domain.model.valueobjects.GoogleSession;
 import com.nexoshift.petcarehub.iam.domain.model.valueobjects.PasswordHash;
 import com.nexoshift.petcarehub.iam.domain.model.valueobjects.Roles;
 import com.nexoshift.petcarehub.iam.domain.repositories.AccountRepository;
@@ -27,6 +32,7 @@ import com.nexoshift.petcarehub.iam.domain.repositories.UserRepository;
 import com.nexoshift.petcarehub.iam.domain.services.AccountCommandService;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,15 +45,18 @@ public class AccountCommandServiceImpl implements AccountCommandService {
   private final RoleRepository roleRepository;
   private final HashingService hashingService;
   private final TokenService tokenService;
+  private final ExternalIdentityVerifier identityVerifier;
 
   public AccountCommandServiceImpl(AccountRepository accountRepository,
                                    UserRepository userRepository, RoleRepository roleRepository,
-                                   HashingService hashingService, TokenService tokenService) {
+                                   HashingService hashingService, TokenService tokenService,
+                                   ExternalIdentityVerifier identityVerifier) {
     this.accountRepository = accountRepository;
     this.userRepository = userRepository;
     this.roleRepository = roleRepository;
     this.hashingService = hashingService;
     this.tokenService = tokenService;
+    this.identityVerifier = identityVerifier;
   }
 
   @Override
@@ -77,6 +86,43 @@ public class AccountCommandServiceImpl implements AccountCommandService {
     }
     var token = tokenService.generateToken(user.getEmailAddress());
     return Optional.of(new AuthenticatedSession(user, token));
+  }
+
+  @Override
+  @Transactional
+  public GoogleSession handle(SignInWithGoogleCommand command) {
+    var identity = identityVerifier.verifyGoogleIdToken(command.idToken());
+    if (!identity.emailVerified()) {
+      throw new InvalidGoogleTokenException("Google has not verified this email");
+    }
+    // The same person, whether they registered with a password or with Google: the email is
+    // the link. A clinic member created by the admin can also enter with Google.
+    var existing = userRepository.findByEmailAddress(identity.email());
+    if (existing.isPresent()) {
+      var user = existing.get();
+      if (!user.isActive()) {
+        throw new InactiveUserException();
+      }
+      return new GoogleSession(
+          new AuthenticatedSession(user, tokenService.generateToken(user.getEmailAddress())),
+          false);
+    }
+    if (command.accountType() == null) {
+      throw new AccountTypeRequiredException();
+    }
+    // New account: a random password that nobody knows. To also enter with a password,
+    // the user asks for one with password recovery.
+    var email = new EmailAddress(identity.email());
+    var passwordHash = new PasswordHash(hashingService.encode(UUID.randomUUID() + "Aa1!"));
+    var account = Account.registerWithHolder(command.accountType(), email, passwordHash,
+        resolveRoles(command.accountType().holderRoles()));
+    account = accountRepository.save(account);
+    account.notifyRegistered();
+    account = accountRepository.save(account);
+    var holder = account.holder();
+    return new GoogleSession(
+        new AuthenticatedSession(holder, tokenService.generateToken(holder.getEmailAddress())),
+        true);
   }
 
   @Override
