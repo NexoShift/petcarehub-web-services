@@ -2,7 +2,7 @@ package com.nexoshift.petcarehub.aiassistance.application.internal.outboundservi
 
 import com.nexoshift.petcarehub.aiassistance.domain.exceptions.AiProviderUnavailableException;
 
-/** Port to the language model. Implemented by the fake and the OpenAI adapters. */
+/** Port to the language model. Implemented by the OpenAI adapter (the tests use a fake one). */
 public interface LlmService {
 
   /**

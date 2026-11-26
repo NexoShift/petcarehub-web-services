@@ -3,7 +3,7 @@ package com.nexoshift.petcarehub.aiassistance.application.internal.outboundservi
 import com.nexoshift.petcarehub.aiassistance.domain.exceptions.AiProviderUnavailableException;
 import com.nexoshift.petcarehub.aiassistance.domain.model.valueobjects.ImageType;
 
-/** Port to the computer vision model. Implemented by the fake and the Roboflow adapters. */
+/** Port to the computer vision model. Implemented by the Roboflow adapter (the tests use a fake one). */
 public interface VisionModelService {
 
   /**

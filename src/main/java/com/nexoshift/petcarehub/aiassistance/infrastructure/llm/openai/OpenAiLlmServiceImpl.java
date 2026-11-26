@@ -60,7 +60,7 @@ public class OpenAiLlmServiceImpl implements LlmService {
 
   public OpenAiLlmServiceImpl(OpenAiProperties properties, ObjectMapper objectMapper) {
     if (properties.apiKey() == null || properties.apiKey().isBlank()) {
-      throw new IllegalStateException("Set OPENAI_API_KEY or use ai.llm.provider=fake");
+      throw new IllegalStateException("Set OPENAI_API_KEY: the API does not start without the OpenAI key");
     }
     this.properties = properties;
     this.objectMapper = objectMapper;
