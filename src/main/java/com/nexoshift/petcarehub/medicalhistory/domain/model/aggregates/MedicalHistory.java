@@ -10,6 +10,7 @@ import com.nexoshift.petcarehub.medicalhistory.domain.model.entities.Vaccination
 import com.nexoshift.petcarehub.medicalhistory.domain.model.valueobjects.HistoryEntryType;
 import com.nexoshift.petcarehub.medicalhistory.domain.model.valueobjects.PetId;
 import com.nexoshift.petcarehub.medicalhistory.domain.model.valueobjects.ReporterType;
+import com.nexoshift.petcarehub.medicalhistory.domain.model.valueobjects.VisibleMedicalHistory;
 import com.nexoshift.petcarehub.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.CascadeType;
@@ -26,6 +27,7 @@ import org.hibernate.annotations.FetchMode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * Aggregate Root of Medical History (HistoriaClinica): the longitudinal record of one pet,
@@ -104,6 +106,18 @@ public class MedicalHistory extends AuditableAbstractAggregateRoot<MedicalHistor
 
   private boolean hasEntry(HistoryEntryType type, Long referenceId) {
     return entries.stream().anyMatch(entry -> entry.refersTo(type, referenceId));
+  }
+
+  /**
+   * What the requester may see. Allergies always stay: hiding one could harm the pet.
+   *
+   * @param canSeeClinic true for the clinics whose records the requester may see
+   */
+  public VisibleMedicalHistory visibleTo(Predicate<Long> canSeeClinic) {
+    return new VisibleMedicalHistory(getPetIdValue(), getAllergies(),
+        getVaccinations().stream().filter(record -> canSeeClinic.test(record.getClinicId()))
+            .toList(),
+        getEntries().stream().filter(entry -> canSeeClinic.test(entry.getClinicId())).toList());
   }
 
   public Long getPetIdValue() {

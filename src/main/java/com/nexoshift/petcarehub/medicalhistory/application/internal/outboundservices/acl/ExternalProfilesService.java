@@ -15,4 +15,7 @@ public interface ExternalProfilesService {
   Optional<Long> fetchClinicIdByVeterinarianId(Long veterinarianId);
 
   boolean isPetPatientOfClinic(Long clinicId, Long petId);
+
+  /** True while the owner lets this clinic see the records of other clinics. */
+  boolean hasActiveHistoryAccess(Long clinicId, Long petId);
 }
